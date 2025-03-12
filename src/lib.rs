@@ -1,13 +1,15 @@
 mod agent;
+mod frontier;
 
 #[cfg(test)]
 mod tests {
+    use crate::frontier::{DequeFrontier, StackFrontier};
+
     use super::*;
 
     use agent::search;
-    use agent::{Frontier, Goal, Node};
-    use std::collections::VecDeque;
-    use std::rc::Rc;
+    use agent::Goal;
+    // use frontier::DequeFrontier;
 
     #[derive(Clone, PartialEq, Eq, Hash, Copy, Debug)]
     enum Action {
@@ -59,8 +61,8 @@ mod tests {
             vec![Action::Left, Action::Right, Action::Suck, Action::Nothing].into_iter()
         }
 
-        fn result(&self, action: &Action) -> Self {
-            match action {
+        fn result(&self, action: &Action) -> (Self, f32) {
+            let result_state = match action {
                 Action::Left => Self::from_parts(Position::Left, self.right_state, self.left_state),
                 Action::Right => {
                     Self::from_parts(Position::Right, self.right_state, self.left_state)
@@ -74,7 +76,8 @@ mod tests {
                     }
                 },
                 Action::Nothing => self.clone(),
-            }
+            };
+            (result_state, 1.0)
         }
     }
 
@@ -86,35 +89,9 @@ mod tests {
         }
     }
 
-    impl Frontier<HouseState, Action> for VecDeque<Rc<Node<HouseState, Action>>> {
-        fn new() -> Self {
-            Self::new()
-        }
-
-        fn add(&mut self, item: std::rc::Rc<agent::Node<HouseState, Action>>) {
-            self.push_back(item);
-        }
-
-        fn pop(&mut self) -> Option<std::rc::Rc<agent::Node<HouseState, Action>>> {
-            self.pop_front()
-        }
-
-        fn delete(&mut self, state: &HouseState) {
-            if let Some(pos) = self.iter().position(|node| node.get_state() == state) {
-                self.remove(pos);
-            }
-        }
-
-        fn iter_mut(&mut self) -> Self::Iter<'_> {
-            self.iter_mut()
-        }
-
-        type Iter<'a> = std::collections::vec_deque::IterMut<'a, Rc<Node<HouseState, Action>>>;
-    }
-
     #[test]
-    fn test_clean_left_dirty_right() {
-        let result = search::<HouseState, Action, VecDeque<Rc<Node<HouseState, Action>>>>(
+    fn test_bfs_clean_left_dirty_right() {
+        let result = search::<HouseState, Action, DequeFrontier<HouseState, Action>>(
             HouseState::from_parts(Position::Left, TailState::Clean, TailState::Dirty),
             HouseGoal {},
         );
@@ -125,8 +102,8 @@ mod tests {
     }
 
     #[test]
-    fn test_dirty_left_clean_right() {
-        let result = search::<HouseState, Action, VecDeque<Rc<Node<HouseState, Action>>>>(
+    fn test_bfs_dirty_left_clean_right() {
+        let result = search::<HouseState, Action, DequeFrontier<HouseState, Action>>(
             HouseState::from_parts(Position::Right, TailState::Dirty, TailState::Clean),
             HouseGoal {},
         );
@@ -137,8 +114,8 @@ mod tests {
     }
 
     #[test]
-    fn test_both_dirty() {
-        let result = search::<HouseState, Action, VecDeque<Rc<Node<HouseState, Action>>>>(
+    fn test_bfs_both_dirty() {
+        let result = search::<HouseState, Action, DequeFrontier<HouseState, Action>>(
             HouseState::from_parts(Position::Left, TailState::Dirty, TailState::Dirty),
             HouseGoal {},
         );
@@ -149,8 +126,56 @@ mod tests {
     }
 
     #[test]
-    fn test_both_clean() {
-        let result = search::<HouseState, Action, VecDeque<Rc<Node<HouseState, Action>>>>(
+    fn test_bfs_both_clean() {
+        let result = search::<HouseState, Action, DequeFrontier<HouseState, Action>>(
+            HouseState::from_parts(Position::Right, TailState::Clean, TailState::Clean),
+            HouseGoal {},
+        );
+        assert!(result.is_some());
+        let res = result.unwrap();
+        assert_eq!(res, vec![Action::Nothing]);
+        eprintln!("{:?}", res);
+    }
+
+    #[test]
+    fn test_dfs_clean_left_dirty_right() {
+        let result = search::<HouseState, Action, StackFrontier<HouseState, Action>>(
+            HouseState::from_parts(Position::Left, TailState::Clean, TailState::Dirty),
+            HouseGoal {},
+        );
+        assert!(result.is_some());
+        let res = result.unwrap();
+        assert_eq!(res, vec![Action::Suck]);
+        eprintln!("{:?}", res);
+    }
+
+    #[test]
+    fn test_dfs_dirty_left_clean_right() {
+        let result = search::<HouseState, Action, StackFrontier<HouseState, Action>>(
+            HouseState::from_parts(Position::Right, TailState::Dirty, TailState::Clean),
+            HouseGoal {},
+        );
+        assert!(result.is_some());
+        let res = result.unwrap();
+        assert_eq!(res, vec![Action::Suck]);
+        eprintln!("{:?}", res);
+    }
+
+    #[test]
+    fn test_dfs_both_dirty() {
+        let result = search::<HouseState, Action, StackFrontier<HouseState, Action>>(
+            HouseState::from_parts(Position::Left, TailState::Dirty, TailState::Dirty),
+            HouseGoal {},
+        );
+        assert!(result.is_some());
+        let res = result.unwrap();
+        assert_eq!(res, vec![Action::Suck, Action::Right, Action::Suck]);
+        eprintln!("{:?}", res);
+    }
+
+    #[test]
+    fn test_dfs_both_clean() {
+        let result = search::<HouseState, Action, StackFrontier<HouseState, Action>>(
             HouseState::from_parts(Position::Right, TailState::Clean, TailState::Clean),
             HouseGoal {},
         );

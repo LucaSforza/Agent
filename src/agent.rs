@@ -4,6 +4,8 @@ use std::hash::Hash;
 use std::rc::Rc;
 use std::vec::Vec;
 
+use crate::frontier::Frontier;
+
 pub trait Goal<State> {
     fn is_goal(&self, state: &State) -> bool;
 }
@@ -12,7 +14,7 @@ pub trait WorldState<Action>: Clone + Eq + Hash {
     type Iter: Iterator<Item = Action>;
 
     fn executable_actions(&self) -> Self::Iter;
-    fn result(&self, action: &Action) -> Self;
+    fn result(&self, action: &Action) -> (Self, f32);
 }
 
 pub struct Node<State, Action>
@@ -76,24 +78,6 @@ where
     }
 }
 
-pub trait Frontier<State, Action>
-where
-    State: WorldState<Action>,
-    Action: Clone,
-{
-    type Iter<'a>: Iterator<Item = &'a mut Rc<Node<State, Action>>>
-    where
-        State: 'a,
-        Action: 'a,
-        Self: 'a;
-
-    fn new() -> Self;
-    fn add(&mut self, item: Rc<Node<State, Action>>);
-    fn pop(&mut self) -> Option<Rc<Node<State, Action>>>;
-    fn delete(&mut self, state: &State);
-    fn iter_mut(&mut self) -> Self::Iter<'_>;
-}
-
 pub fn search<State, Action, Front>(
     init_state: State,
     goal: impl Goal<State>,
@@ -105,23 +89,23 @@ where
 {
     let mut frontier = Front::new();
     let mut explored = HashSet::new();
-    frontier.add(Rc::new(Node::new(None, init_state, Action::default(), 0.0)));
-    while let Some(curr_node) = frontier.pop() {
+    frontier.enqueue(Rc::new(Node::new(None, init_state, Action::default(), 0.0)));
+    while let Some(curr_node) = frontier.dequeue() {
         let curr_state = &curr_node.state;
         if goal.is_goal(curr_state) {
             return Some(curr_node.get_plan());
         } else {
             for action in curr_state.executable_actions() {
-                let new_state = curr_state.result(&action);
+                let (new_state, cost) = curr_state.result(&action);
                 if !explored.iter().any(|x| *x == new_state) {
                     let new_node = Rc::new(Node::new(
                         Some(curr_node.clone()),
                         new_state.clone(),
                         action,
-                        1.0,
+                        cost,
                     )); // TODO: cambiare costo
                     let mut found = false;
-                    for existing_node in frontier.iter_mut() {
+                    for existing_node in frontier.mut_elements() {
                         if existing_node.state == new_state {
                             found = true;
                             if new_node.get_total_cost() < existing_node.get_total_cost() {
@@ -132,7 +116,7 @@ where
                     }
 
                     if !found {
-                        frontier.add(new_node);
+                        frontier.enqueue(new_node);
                     }
                 }
             }
