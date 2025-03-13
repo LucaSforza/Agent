@@ -86,7 +86,10 @@ mod tests {
         assert!(result.actions.is_some());
         let res = result.actions.unwrap();
         assert_eq!(res, vec![Action::Suck]);
-        eprintln!("{:?}", res);
+        eprintln!(
+            "Result: {:?}, time: {:?}, n_iter: {}",
+            res, result.total_time, result.n_iter
+        );
     }
 
     #[test]
@@ -99,7 +102,10 @@ mod tests {
         assert!(result.actions.is_some());
         let res = result.actions.unwrap();
         assert_eq!(res, vec![Action::Suck]);
-        eprintln!("{:?}", res);
+        eprintln!(
+            "Result: {:?}, time: {:?}, n_iter: {}",
+            res, result.total_time, result.n_iter
+        );
     }
 
     #[test]
@@ -110,7 +116,10 @@ mod tests {
         assert!(result.actions.is_some());
         let res = result.actions.unwrap();
         assert_eq!(res, vec![Action::Suck, Action::Right, Action::Suck]);
-        eprintln!("{:?}", res);
+        eprintln!(
+            "Result: {:?}, time: {:?}, n_iter: {}",
+            res, result.total_time, result.n_iter
+        );
     }
 
     #[test]
@@ -122,7 +131,10 @@ mod tests {
         assert!(result.actions.is_some());
         let res = result.actions.unwrap();
         assert_eq!(res, vec![Action::Nothing]);
-        eprintln!("{:?}", res);
+        eprintln!(
+            "Result: {:?}, time: {:?}, n_iter: {}",
+            res, result.total_time, result.n_iter
+        );
     }
 
     #[test]
@@ -133,7 +145,10 @@ mod tests {
         assert!(result.actions.is_some());
         let res = result.actions.unwrap();
         assert_eq!(res, vec![Action::Suck]);
-        eprintln!("{:?}", res);
+        eprintln!(
+            "Result: {:?}, time: {:?}, n_iter: {}",
+            res, result.total_time, result.n_iter
+        );
     }
 
     #[test]
@@ -145,7 +160,10 @@ mod tests {
         assert!(result.actions.is_some());
         let res = result.actions.unwrap();
         assert_eq!(res, vec![Action::Suck]);
-        eprintln!("{:?}", res);
+        eprintln!(
+            "Result: {:?}, time: {:?}, n_iter: {}",
+            res, result.total_time, result.n_iter
+        );
     }
 
     #[test]
@@ -156,7 +174,10 @@ mod tests {
         assert!(result.actions.is_some());
         let res = result.actions.unwrap();
         assert_eq!(res, vec![Action::Suck, Action::Right, Action::Suck]);
-        eprintln!("{:?}", res);
+        eprintln!(
+            "Result: {:?}, time: {:?}, n_iter: {}",
+            res, result.total_time, result.n_iter
+        );
     }
 
     #[test]
@@ -168,6 +189,9 @@ mod tests {
         assert!(result.actions.is_some());
         let res = result.actions.unwrap();
         assert_eq!(res, vec![Action::Nothing]);
-        eprintln!("{:?}", res);
+        eprintln!(
+            "Result: {:?}, time: {:?}, n_iter: {}",
+            res, result.total_time, result.n_iter
+        );
     }
 }
