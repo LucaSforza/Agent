@@ -71,31 +71,3 @@ where
         &self.state
     }
 }
-
-/*
-pub struct Strategy<State, Action, Target>
-where
-    State: WorldState<Action>,
-    Action: Clone,
-    Front: Frontier<State, Action>,
-{
-    init_state: State,
-    goal: Target,
-}
-
-impl<State, Action, Front, Target> Strategy<State, Action, Front, Target>
-where
-    State: WorldState<Action>,
-    Action: Clone,
-    Front: Frontier<State, Action>,
-    Target: Goal<State>,
-{
-    pub fn new(init_state: State, goal: Target) -> Self {
-        Self {
-            init_state: init_state,
-            goal: goal,
-        }
-    }
-
-    pub fn search(&mut self)
-} */
