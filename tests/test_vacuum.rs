@@ -212,4 +212,88 @@ mod tests {
             res, result.total_time, result.n_iter
         );
     }
+
+    #[test]
+    fn test_vacuum_dfs_esposito() {
+        let pos = vec![
+            Pos::new(0, 1),
+            Pos::new(0, 2),
+            Pos::new(0, 3),
+            Pos::new(1, 1),
+            Pos::new(1, 3),
+            Pos::new(2, 3),
+            Pos::new(2, 4),
+            Pos::new(3, 0),
+            Pos::new(3, 1),
+            Pos::new(3, 2),
+            Pos::new(3, 3),
+            Pos::new(4, 0),
+            Pos::new(4, 2),
+        ];
+
+        let init_state = HouseState::with_dirty(4, 3, 5, 5, pos);
+        let explorer = DFSExplorer::<HouseState, Action>::new();
+        let sresult = explorer.search(init_state);
+        assert!(sresult.actions.is_some());
+        let actions = sresult.actions.unwrap();
+        println!("{:?}", actions);
+    }
+
+    #[test]
+    fn test_vacuum_bfs_esposito() {
+        let pos = vec![
+            Pos::new(0, 1),
+            Pos::new(0, 2),
+            Pos::new(0, 3),
+            Pos::new(1, 1),
+            Pos::new(1, 3),
+            Pos::new(2, 3),
+            Pos::new(2, 4),
+            Pos::new(3, 0),
+            Pos::new(3, 1),
+            Pos::new(3, 2),
+            Pos::new(3, 3),
+            Pos::new(4, 0),
+            Pos::new(4, 2),
+        ];
+
+        let mut result = vec![
+            Action::Right,
+            Action::Suck,
+            Action::Left,
+            Action::Suck,
+            Action::Up,
+            Action::Suck,
+            Action::Left,
+            Action::Left,
+            Action::Suck,
+            Action::Left,
+            Action::Suck,
+            Action::Up,
+            Action::Suck,
+            Action::Up,
+            Action::Suck,
+            Action::Right,
+            Action::Suck,
+            Action::Right,
+            Action::Up,
+            Action::Suck,
+            Action::Down,
+            Action::Suck,
+            Action::Right,
+            Action::Suck,
+            Action::Down,
+            Action::Suck,
+            Action::Right,
+            Action::Suck,
+        ];
+        result.reverse(); // esposito result
+
+        let init_state = HouseState::with_dirty(4, 3, 5, 5, pos);
+        let explorer = BFSExplorer::<HouseState, Action>::new();
+        let sresult = explorer.search(init_state);
+        assert!(sresult.actions.is_some());
+        let actions = sresult.actions.unwrap();
+        println!("{:?}", actions);
+    }
 }
