@@ -133,7 +133,7 @@ mod tests {
         }
 
         fn is_goal(&self) -> bool {
-            return self.where_dirty.len() == 0;
+            return self.where_dirty.is_empty();
         }
     }
 
