@@ -1,9 +1,7 @@
 #[cfg(test)]
 mod tests {
-    use agent::frontier::{DequeFrontier, StackFrontier};
-
     use agent::agent::WorldState;
-    use agent::explorer::Explorer;
+    use agent::explorer::{BFSExplorer, DFSExplorer};
     // use frontier::DequeFrontier;
 
     #[derive(Clone, PartialEq, Eq, Hash, Copy, Debug)]
@@ -82,7 +80,7 @@ mod tests {
 
     #[test]
     fn test_bfs_clean_left_dirty_right() {
-        let explorer = Explorer::<HouseState, Action, DequeFrontier<HouseState, Action>>::new();
+        let explorer = BFSExplorer::<HouseState, Action>::new();
         let init_state = HouseState::from_parts(Position::Left, TailState::Clean, TailState::Dirty);
         let result = explorer.search(init_state);
         assert!(result.actions.is_some());
@@ -95,7 +93,7 @@ mod tests {
     fn test_bfs_dirty_left_clean_right() {
         let init_state =
             HouseState::from_parts(Position::Right, TailState::Dirty, TailState::Clean);
-        let explorer = Explorer::<HouseState, Action, DequeFrontier<HouseState, Action>>::new();
+        let explorer = BFSExplorer::<HouseState, Action>::new();
 
         let result = explorer.search(init_state);
         assert!(result.actions.is_some());
@@ -107,7 +105,7 @@ mod tests {
     #[test]
     fn test_bfs_both_dirty() {
         let init_state = HouseState::from_parts(Position::Left, TailState::Dirty, TailState::Dirty);
-        let explorer = Explorer::<HouseState, Action, DequeFrontier<HouseState, Action>>::new();
+        let explorer = BFSExplorer::<HouseState, Action>::new();
         let result = explorer.search(init_state);
         assert!(result.actions.is_some());
         let res = result.actions.unwrap();
@@ -119,7 +117,7 @@ mod tests {
     fn test_bfs_both_clean() {
         let init_state =
             HouseState::from_parts(Position::Right, TailState::Clean, TailState::Clean);
-        let explorer = Explorer::<HouseState, Action, DequeFrontier<HouseState, Action>>::new();
+        let explorer = BFSExplorer::<HouseState, Action>::new();
         let result = explorer.search(init_state);
         assert!(result.actions.is_some());
         let res = result.actions.unwrap();
@@ -129,7 +127,7 @@ mod tests {
 
     #[test]
     fn test_dfs_clean_left_dirty_right() {
-        let explorer = Explorer::<HouseState, Action, StackFrontier<HouseState, Action>>::new();
+        let explorer = DFSExplorer::<HouseState, Action>::new();
         let init_state = HouseState::from_parts(Position::Left, TailState::Clean, TailState::Dirty);
         let result = explorer.search(init_state);
         assert!(result.actions.is_some());
@@ -140,7 +138,7 @@ mod tests {
 
     #[test]
     fn test_dfs_dirty_left_clean_right() {
-        let explorer = Explorer::<HouseState, Action, StackFrontier<HouseState, Action>>::new();
+        let explorer = DFSExplorer::<HouseState, Action>::new();
         let init_state =
             HouseState::from_parts(Position::Right, TailState::Dirty, TailState::Clean);
         let result = explorer.search(init_state);
@@ -152,7 +150,7 @@ mod tests {
 
     #[test]
     fn test_dfs_both_dirty() {
-        let explorer = Explorer::<HouseState, Action, StackFrontier<HouseState, Action>>::new();
+        let explorer = DFSExplorer::<HouseState, Action>::new();
         let init_state = HouseState::from_parts(Position::Left, TailState::Dirty, TailState::Dirty);
         let result = explorer.search(init_state);
         assert!(result.actions.is_some());
@@ -163,7 +161,7 @@ mod tests {
 
     #[test]
     fn test_dfs_both_clean() {
-        let explorer = Explorer::<HouseState, Action, StackFrontier<HouseState, Action>>::new();
+        let explorer = DFSExplorer::<HouseState, Action>::new();
         let init_state =
             HouseState::from_parts(Position::Right, TailState::Clean, TailState::Clean);
         let result = explorer.search(init_state);

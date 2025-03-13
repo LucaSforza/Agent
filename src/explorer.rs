@@ -6,7 +6,7 @@ use std::{
 
 use crate::{
     agent::{Node, WorldState},
-    frontier::Frontier,
+    frontier::{DequeFrontier, Frontier, StackFrontier},
 };
 
 pub struct SearchResult<Action>
@@ -24,7 +24,7 @@ where
 {
     pub fn found(start_time: Instant, actions: Vec<Action>, n_iter: u64) -> Self {
         Self {
-            total_time: Instant::now() - start_time,
+            total_time: start_time.elapsed(),
             actions: actions.into(),
             n_iter: n_iter,
         }
@@ -32,7 +32,7 @@ where
 
     pub fn not_found(start_time: Instant, n_iter: u64) -> Self {
         Self {
-            total_time: Instant::now() - start_time,
+            total_time: start_time.elapsed(),
             actions: None,
             n_iter: n_iter,
         }
@@ -134,3 +134,6 @@ where
         return result;
     }
 }
+
+pub type BFSExplorer<State, Action> = Explorer<State, Action, DequeFrontier<State, Action>>;
+pub type DFSExplorer<State, Action> = Explorer<State, Action, StackFrontier<State, Action>>;
