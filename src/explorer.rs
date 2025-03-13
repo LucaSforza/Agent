@@ -1,9 +1,43 @@
-use std::{collections::HashSet, rc::Rc, time::Instant};
+use std::{
+    collections::HashSet,
+    rc::Rc,
+    time::{Duration, Instant},
+};
 
 use crate::{
     agent::{Node, WorldState},
     frontier::Frontier,
 };
+
+pub struct SearchResult<Action>
+where
+    Action: Clone,
+{
+    pub total_time: Duration,
+    pub actions: Option<Vec<Action>>,
+    pub n_iter: u64,
+}
+
+impl<Action> SearchResult<Action>
+where
+    Action: Clone,
+{
+    pub fn found(start_time: Instant, actions: Vec<Action>, n_iter: u64) -> Self {
+        Self {
+            total_time: Instant::now() - start_time,
+            actions: actions.into(),
+            n_iter: n_iter,
+        }
+    }
+
+    pub fn not_found(start_time: Instant, n_iter: u64) -> Self {
+        Self {
+            total_time: Instant::now() - start_time,
+            actions: None,
+            n_iter: n_iter,
+        }
+    }
+}
 
 pub struct Explorer<State, Action, Front>
 where
@@ -11,7 +45,7 @@ where
     Action: Clone,
     Front: Frontier<State, Action>,
 {
-    max_depth: Option<usize>,
+    max_depth: Option<u64>,
     _action: std::marker::PhantomData<Action>,
     _state: std::marker::PhantomData<State>,
     _front: std::marker::PhantomData<Front>,
@@ -32,7 +66,7 @@ where
         }
     }
 
-    pub fn with_max_depth(max_depth: usize) -> Self {
+    pub fn with_max_depth(max_depth: u64) -> Self {
         Self {
             max_depth: max_depth.into(),
             _action: std::marker::PhantomData,
@@ -41,7 +75,7 @@ where
         }
     }
 
-    pub fn search(self, init_state: State) -> Option<Vec<Action>>
+    pub fn search(self, init_state: State) -> SearchResult<Action>
     where
         State: WorldState<Action>,
         Action: Clone + Default,
@@ -50,10 +84,23 @@ where
         let mut frontier = Front::new();
         let mut explored = HashSet::new();
         frontier.enqueue(Rc::new(Node::new(None, init_state, Action::default(), 0.0)));
+
+        let mut n_iter = 0;
+        let result: SearchResult<Action>;
+
+        let start = Instant::now();
+
         while let Some(curr_node) = frontier.dequeue() {
+            if self.max_depth.map_or(false, |x| x >= n_iter) {
+                result = SearchResult::<Action>::not_found(start, n_iter);
+                return result;
+            }
+            n_iter += 1;
+
             let curr_state = curr_node.get_state();
             if curr_state.is_goal() {
-                return Some(curr_node.get_plan());
+                result = SearchResult::<Action>::found(start, curr_node.get_plan().into(), n_iter);
+                return result;
             } else {
                 for action in curr_state.executable_actions() {
                     let (new_state, cost) = curr_state.result(&action);
@@ -63,7 +110,7 @@ where
                             new_state.clone(),
                             action,
                             cost,
-                        )); // TODO: cambiare costo
+                        ));
                         let mut found = false;
                         for existing_node in frontier.mut_elements() {
                             if *existing_node.get_state() == new_state {
@@ -83,6 +130,7 @@ where
             }
             explored.insert(curr_state.clone());
         }
-        return None;
+        result = SearchResult::<Action>::not_found(start, n_iter);
+        return result;
     }
 }
