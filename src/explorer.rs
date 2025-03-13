@@ -42,7 +42,7 @@ where
 pub struct Explorer<State, Action, Front>
 where
     State: WorldState<Action>,
-    Action: Clone,
+    Action: Clone + Default,
     Front: Frontier<State, Action>,
 {
     max_depth: Option<u64>,
@@ -54,7 +54,7 @@ where
 impl<State, Action, Front> Explorer<State, Action, Front>
 where
     State: WorldState<Action>,
-    Action: Clone,
+    Action: Clone + Default,
     Front: Frontier<State, Action>,
 {
     pub fn new() -> Self {
@@ -75,12 +75,7 @@ where
         }
     }
 
-    pub fn search(self, init_state: State) -> SearchResult<Action>
-    where
-        State: WorldState<Action>,
-        Action: Clone + Default,
-        Front: Frontier<State, Action>,
-    {
+    pub fn search(self, init_state: State) -> SearchResult<Action> {
         let mut frontier = Front::new();
         let mut explored = HashSet::new();
         frontier.enqueue(Rc::new(Node::new(None, init_state, Action::default(), 0.0)));
