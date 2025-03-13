@@ -1,4 +1,5 @@
 mod agent;
+mod explorer;
 mod frontier;
 
 #[cfg(test)]
@@ -7,8 +8,7 @@ mod tests {
 
     use super::*;
 
-    use agent::search;
-    use agent::Goal;
+    use explorer::Explorer;
     // use frontier::DequeFrontier;
 
     #[derive(Clone, PartialEq, Eq, Hash, Copy, Debug)]
@@ -79,22 +79,17 @@ mod tests {
             };
             (result_state, 1.0)
         }
-    }
 
-    struct HouseGoal {}
-
-    impl Goal<HouseState> for HouseGoal {
-        fn is_goal(&self, state: &HouseState) -> bool {
-            return state.left_state == TailState::Clean && state.right_state == TailState::Clean;
+        fn is_goal(&self) -> bool {
+            return self.left_state == TailState::Clean && self.right_state == TailState::Clean;
         }
     }
 
     #[test]
     fn test_bfs_clean_left_dirty_right() {
-        let result = search::<HouseState, Action, DequeFrontier<HouseState, Action>>(
-            HouseState::from_parts(Position::Left, TailState::Clean, TailState::Dirty),
-            HouseGoal {},
-        );
+        let explorer = Explorer::<HouseState, Action, DequeFrontier<HouseState, Action>>::new();
+        let init_state = HouseState::from_parts(Position::Left, TailState::Clean, TailState::Dirty);
+        let result = explorer.search(init_state);
         assert!(result.is_some());
         let res = result.unwrap();
         assert_eq!(res, vec![Action::Suck]);
@@ -103,10 +98,11 @@ mod tests {
 
     #[test]
     fn test_bfs_dirty_left_clean_right() {
-        let result = search::<HouseState, Action, DequeFrontier<HouseState, Action>>(
-            HouseState::from_parts(Position::Right, TailState::Dirty, TailState::Clean),
-            HouseGoal {},
-        );
+        let init_state =
+            HouseState::from_parts(Position::Right, TailState::Dirty, TailState::Clean);
+        let explorer = Explorer::<HouseState, Action, DequeFrontier<HouseState, Action>>::new();
+
+        let result = explorer.search(init_state);
         assert!(result.is_some());
         let res = result.unwrap();
         assert_eq!(res, vec![Action::Suck]);
@@ -115,10 +111,9 @@ mod tests {
 
     #[test]
     fn test_bfs_both_dirty() {
-        let result = search::<HouseState, Action, DequeFrontier<HouseState, Action>>(
-            HouseState::from_parts(Position::Left, TailState::Dirty, TailState::Dirty),
-            HouseGoal {},
-        );
+        let init_state = HouseState::from_parts(Position::Left, TailState::Dirty, TailState::Dirty);
+        let explorer = Explorer::<HouseState, Action, DequeFrontier<HouseState, Action>>::new();
+        let result = explorer.search(init_state);
         assert!(result.is_some());
         let res = result.unwrap();
         assert_eq!(res, vec![Action::Suck, Action::Right, Action::Suck]);
@@ -127,10 +122,10 @@ mod tests {
 
     #[test]
     fn test_bfs_both_clean() {
-        let result = search::<HouseState, Action, DequeFrontier<HouseState, Action>>(
-            HouseState::from_parts(Position::Right, TailState::Clean, TailState::Clean),
-            HouseGoal {},
-        );
+        let init_state =
+            HouseState::from_parts(Position::Right, TailState::Clean, TailState::Clean);
+        let explorer = Explorer::<HouseState, Action, DequeFrontier<HouseState, Action>>::new();
+        let result = explorer.search(init_state);
         assert!(result.is_some());
         let res = result.unwrap();
         assert_eq!(res, vec![Action::Nothing]);
@@ -139,10 +134,9 @@ mod tests {
 
     #[test]
     fn test_dfs_clean_left_dirty_right() {
-        let result = search::<HouseState, Action, StackFrontier<HouseState, Action>>(
-            HouseState::from_parts(Position::Left, TailState::Clean, TailState::Dirty),
-            HouseGoal {},
-        );
+        let explorer = Explorer::<HouseState, Action, StackFrontier<HouseState, Action>>::new();
+        let init_state = HouseState::from_parts(Position::Left, TailState::Clean, TailState::Dirty);
+        let result = explorer.search(init_state);
         assert!(result.is_some());
         let res = result.unwrap();
         assert_eq!(res, vec![Action::Suck]);
@@ -151,10 +145,10 @@ mod tests {
 
     #[test]
     fn test_dfs_dirty_left_clean_right() {
-        let result = search::<HouseState, Action, StackFrontier<HouseState, Action>>(
-            HouseState::from_parts(Position::Right, TailState::Dirty, TailState::Clean),
-            HouseGoal {},
-        );
+        let explorer = Explorer::<HouseState, Action, StackFrontier<HouseState, Action>>::new();
+        let init_state =
+            HouseState::from_parts(Position::Right, TailState::Dirty, TailState::Clean);
+        let result = explorer.search(init_state);
         assert!(result.is_some());
         let res = result.unwrap();
         assert_eq!(res, vec![Action::Suck]);
@@ -163,10 +157,9 @@ mod tests {
 
     #[test]
     fn test_dfs_both_dirty() {
-        let result = search::<HouseState, Action, StackFrontier<HouseState, Action>>(
-            HouseState::from_parts(Position::Left, TailState::Dirty, TailState::Dirty),
-            HouseGoal {},
-        );
+        let explorer = Explorer::<HouseState, Action, StackFrontier<HouseState, Action>>::new();
+        let init_state = HouseState::from_parts(Position::Left, TailState::Dirty, TailState::Dirty);
+        let result = explorer.search(init_state);
         assert!(result.is_some());
         let res = result.unwrap();
         assert_eq!(res, vec![Action::Suck, Action::Right, Action::Suck]);
@@ -175,10 +168,10 @@ mod tests {
 
     #[test]
     fn test_dfs_both_clean() {
-        let result = search::<HouseState, Action, StackFrontier<HouseState, Action>>(
-            HouseState::from_parts(Position::Right, TailState::Clean, TailState::Clean),
-            HouseGoal {},
-        );
+        let explorer = Explorer::<HouseState, Action, StackFrontier<HouseState, Action>>::new();
+        let init_state =
+            HouseState::from_parts(Position::Right, TailState::Clean, TailState::Clean);
+        let result = explorer.search(init_state);
         assert!(result.is_some());
         let res = result.unwrap();
         assert_eq!(res, vec![Action::Nothing]);
