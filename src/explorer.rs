@@ -5,7 +5,7 @@ use std::{
 
 use crate::{
     agent::{Node, WorldState},
-    frontier::{DequeFrontier, Frontier, StackFrontier},
+    frontier::{DequeBackend, Frontier, FrontierBackend, StackBackend},
 };
 
 pub struct SearchResult<Action>
@@ -38,30 +38,30 @@ where
     }
 }
 
-pub struct Explorer<State, Action, Front>
+pub struct Explorer<State, Action, Backend>
 where
     State: WorldState<Action>,
     Action: Clone,
-    Front: Frontier<State, Action>,
+    Backend: FrontierBackend<State, Action>,
 {
     max_depth: Option<u64>,
     _action: std::marker::PhantomData<Action>,
     _state: std::marker::PhantomData<State>,
-    _front: std::marker::PhantomData<Front>,
+    _backend: std::marker::PhantomData<Backend>,
 }
 
-impl<State, Action, Front> Explorer<State, Action, Front>
+impl<State, Action, Backend> Explorer<State, Action, Backend>
 where
     State: WorldState<Action>,
     Action: Clone,
-    Front: Frontier<State, Action>,
+    Backend: FrontierBackend<State, Action>,
 {
     pub fn new() -> Self {
         Self {
             max_depth: None,
             _action: std::marker::PhantomData,
             _state: std::marker::PhantomData,
-            _front: std::marker::PhantomData,
+            _backend: std::marker::PhantomData,
         }
     }
 
@@ -70,12 +70,12 @@ where
             max_depth: max_depth.into(),
             _action: std::marker::PhantomData,
             _state: std::marker::PhantomData,
-            _front: std::marker::PhantomData,
+            _backend: std::marker::PhantomData,
         }
     }
 
     pub fn search(self, init_state: State) -> SearchResult<Action> {
-        let mut frontier = Front::new();
+        let mut frontier = Frontier::<State, Action, Backend>::new();
         let mut explored = HashSet::new();
         frontier.enqueue_or_replace(Node::new(None, init_state, None, 0.0));
 
@@ -116,5 +116,5 @@ where
     }
 }
 
-pub type BFSExplorer<State, Action> = Explorer<State, Action, DequeFrontier<State, Action>>;
-pub type DFSExplorer<State, Action> = Explorer<State, Action, StackFrontier<State, Action>>;
+pub type BFSExplorer<State, Action> = Explorer<State, Action, DequeBackend<State, Action>>;
+pub type DFSExplorer<State, Action> = Explorer<State, Action, StackBackend<State, Action>>;
