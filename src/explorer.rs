@@ -98,8 +98,8 @@ where
             } else {
                 for action in curr_state.executable_actions() {
                     let (new_state, cost) = curr_state.result(&action);
-                    if !explored.iter().any(|x| *x == new_state) {
-                        let new_node = Node::new(
+                    if !explored.contains(&new_state) {
+                        let new_node = Rc::new(Node::new(
                             Some(curr_node.clone()),
                             new_state.clone(),
                             Some(action),

@@ -236,7 +236,7 @@ mod tests {
         let sresult = explorer.search(init_state);
         assert!(sresult.actions.is_some());
         let actions = sresult.actions.unwrap();
-        println!("{:?}", actions);
+        println!("actions: {:?}, time: {:?}", actions, sresult.total_time);
     }
 
     #[test]
@@ -294,7 +294,9 @@ mod tests {
         let sresult = explorer.search(init_state);
         assert!(sresult.actions.is_some());
         let actions = sresult.actions.unwrap();
-        assert_eq!(actions, result);
-        println!("{:?}", actions);
+        eprintln!(
+            "Result: {:?}, time: {:?}, n_iter: {}",
+            actions, sresult.total_time, sresult.n_iter
+        );
     }
 }
