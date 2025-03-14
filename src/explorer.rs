@@ -1,6 +1,5 @@
 use std::{
     collections::HashSet,
-    rc::Rc,
     time::{Duration, Instant},
 };
 
@@ -42,7 +41,7 @@ where
 pub struct Explorer<State, Action, Front>
 where
     State: WorldState<Action>,
-    Action: Clone + Default,
+    Action: Clone,
     Front: Frontier<State, Action>,
 {
     max_depth: Option<u64>,
@@ -54,7 +53,7 @@ where
 impl<State, Action, Front> Explorer<State, Action, Front>
 where
     State: WorldState<Action>,
-    Action: Clone + Default,
+    Action: Clone,
     Front: Frontier<State, Action>,
 {
     pub fn new() -> Self {
@@ -78,7 +77,7 @@ where
     pub fn search(self, init_state: State) -> SearchResult<Action> {
         let mut frontier = Front::new();
         let mut explored = HashSet::new();
-        frontier.enqueue(Rc::new(Node::new(None, init_state, Action::default(), 0.0)));
+        frontier.enqueue_or_replace(Node::new(None, init_state, None, 0.0));
 
         let mut n_iter = 0;
         let result: SearchResult<Action>;
@@ -100,26 +99,13 @@ where
                 for action in curr_state.executable_actions() {
                     let (new_state, cost) = curr_state.result(&action);
                     if !explored.iter().any(|x| *x == new_state) {
-                        let new_node = Rc::new(Node::new(
+                        let new_node = Node::new(
                             Some(curr_node.clone()),
                             new_state.clone(),
-                            action,
+                            Some(action),
                             cost,
-                        ));
-                        let mut found = false;
-                        for existing_node in frontier.mut_elements() {
-                            if *existing_node.get_state() == new_state {
-                                found = true;
-                                if new_node.get_total_cost() < existing_node.get_total_cost() {
-                                    *existing_node = new_node.clone(); // Aggiornamento sicuro
-                                }
-                                break; // Uscita dal loop per evitare iterazioni inutili
-                            }
-                        }
-
-                        if !found {
-                            frontier.enqueue(new_node);
-                        }
+                        );
+                        frontier.enqueue_or_replace(new_node);
                     }
                 }
             }

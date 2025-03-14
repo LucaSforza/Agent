@@ -18,7 +18,7 @@ where
 {
     state: State,
     parent: Option<Rc<Node<State, Action>>>,
-    action: Action,
+    action: Option<Action>,
     total_cost: f32,
     depth: usize,
 }
@@ -31,9 +31,10 @@ where
     pub fn new(
         parent: Option<Rc<Node<State, Action>>>,
         state: State,
-        action: Action,
+        action: Option<Action>,
         cost: f32,
     ) -> Self {
+        assert!((parent.is_none() && action.is_none()) || (parent.is_some() && action.is_some()));
         let mut total_cost = cost;
         let mut depth = 0;
         if let Some(parent_node) = parent.as_ref() {
@@ -51,16 +52,20 @@ where
 
     pub fn get_plan(&self) -> Vec<Action> {
         let mut result: Vec<Action> = Vec::with_capacity(self.depth);
-        result.push(self.action.clone());
-        let mut parent: Option<Rc<Node<State, Action>>> = self.parent.clone();
-        while let Some(node) = parent.as_ref() {
-            let new_node = node.clone();
-            parent = new_node.parent.clone();
-            if new_node.parent.is_some() {
-                result.push(new_node.action.clone());
+
+        if self.action.is_some() {
+            result.push(self.action.clone().unwrap());
+            let mut current_node: Option<Rc<Node<State, Action>>> = self.parent.clone();
+
+            while let Some(node) = current_node {
+                if let Some(action) = &node.action {
+                    result.push(action.clone());
+                }
+                current_node = node.parent.clone();
             }
         }
-        return result;
+        result.reverse();
+        result
     }
 
     pub fn get_total_cost(&self) -> f32 {

@@ -287,13 +287,14 @@ mod tests {
             Action::Right,
             Action::Suck,
         ];
-        result.reverse(); // esposito result
+        // result.reverse(); // esposito result
 
         let init_state = HouseState::with_dirty(4, 3, 5, 5, pos);
         let explorer = BFSExplorer::<HouseState, Action>::new();
         let sresult = explorer.search(init_state);
         assert!(sresult.actions.is_some());
         let actions = sresult.actions.unwrap();
+        assert_eq!(actions, result);
         println!("{:?}", actions);
     }
 }

@@ -9,13 +9,6 @@ mod tests {
         Left,
         Right,
         Suck,
-        Nothing,
-    }
-
-    impl Default for Action {
-        fn default() -> Self {
-            Self::Nothing
-        }
     }
 
     #[derive(Clone, PartialEq, Eq, Hash, Copy)]
@@ -51,7 +44,7 @@ mod tests {
         type Iter = std::vec::IntoIter<Action>;
 
         fn executable_actions(&self) -> Self::Iter {
-            vec![Action::Left, Action::Right, Action::Suck, Action::Nothing].into_iter()
+            vec![Action::Left, Action::Right, Action::Suck].into_iter()
         }
 
         fn result(&self, action: &Action) -> (Self, f32) {
@@ -68,7 +61,6 @@ mod tests {
                         Self::from_parts(self.pos, TailState::Clean, self.left_state)
                     }
                 },
-                Action::Nothing => self.clone(),
             };
             (result_state, 1.0)
         }
@@ -130,7 +122,7 @@ mod tests {
         let result = explorer.search(init_state);
         assert!(result.actions.is_some());
         let res = result.actions.unwrap();
-        assert_eq!(res, vec![Action::Nothing]);
+        assert_eq!(res, vec![]);
         eprintln!(
             "Result: {:?}, time: {:?}, n_iter: {}",
             res, result.total_time, result.n_iter
@@ -188,7 +180,7 @@ mod tests {
         let result = explorer.search(init_state);
         assert!(result.actions.is_some());
         let res = result.actions.unwrap();
-        assert_eq!(res, vec![Action::Nothing]);
+        assert_eq!(res, vec![]);
         eprintln!(
             "Result: {:?}, time: {:?}, n_iter: {}",
             res, result.total_time, result.n_iter
