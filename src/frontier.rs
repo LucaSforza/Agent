@@ -12,6 +12,7 @@ where
 {
     fn enqueue(&mut self, item: Rc<Node<State, Action>>);
     fn dequeue(&mut self) -> Option<Rc<Node<State, Action>>>;
+    fn delete(&mut self, state: &State) -> bool;
 }
 
 pub struct Frontier<State, Action, Backend>
@@ -40,8 +41,18 @@ where
     // TODO: change bool into an enum
     // TODO: change if the cost is less than the actual node
     pub fn enqueue_or_replace(&mut self, item: Node<State, Action>) -> bool {
-        if self.get_node.contains_key(item.get_state()) {
-            return false;
+        let mut to_remove = None;
+        if let Some(old_node) = self.get_node.get(item.get_state()) {
+            if old_node.get_total_cost() > item.get_total_cost() {
+                to_remove = old_node.get_state().clone().into();
+            } else {
+                return false;
+            }
+        }
+
+        if let Some(to_remove) = to_remove {
+            self.collection.delete(&to_remove);
+            self.get_node.remove(&to_remove);
         }
 
         let state = item.get_state().clone();
@@ -76,6 +87,20 @@ where
     fn enqueue(&mut self, item: Rc<Node<State, Action>>) {
         self.push_back(item);
     }
+
+    fn delete(&mut self, state: &State) -> bool {
+        let mut index = None;
+        for (i, node) in self.iter().enumerate() {
+            if node.get_state() == state {
+                index = i.into()
+            }
+        }
+        if let Some(i) = index {
+            self.remove(i);
+            return true;
+        }
+        return false;
+    }
 }
 
 pub type StackBackend<State, Action> = Vec<Rc<Node<State, Action>>>;
@@ -91,5 +116,19 @@ where
 
     fn dequeue(&mut self) -> Option<Rc<Node<State, Action>>> {
         self.pop()
+    }
+
+    fn delete(&mut self, state: &State) -> bool {
+        let mut index = None;
+        for (i, node) in self.iter().enumerate() {
+            if node.get_state() == state {
+                index = i.into()
+            }
+        }
+        if let Some(i) = index {
+            self.remove(i);
+            return true;
+        }
+        return false;
     }
 }
