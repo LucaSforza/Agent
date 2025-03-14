@@ -116,7 +116,7 @@ mod tests {
             actions.into_iter()
         }
 
-        fn result(&self, action: &Action) -> (Self, f32) {
+        fn result(&self, action: &Action) -> (Self, f64) {
             let result_state = match action {
                 Action::Left => self.new_position(self.pos.x - 1, self.pos.y),
                 Action::Right => self.new_position(self.pos.x + 1, self.pos.y),

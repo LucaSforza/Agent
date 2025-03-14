@@ -1,5 +1,6 @@
 use std::{
     collections::{HashMap, VecDeque},
+    hash::Hash,
     rc::Rc,
 };
 
@@ -130,5 +131,40 @@ where
             return true;
         }
         return false;
+    }
+}
+use ordered_float::OrderedFloat;
+use priority_queue::PriorityQueue;
+
+pub type MinGBackend<State, Action> = PriorityQueue<Rc<Node<State, Action>>, OrderedFloat<f64>>;
+
+impl<State, Action> FrontierBackend<State, Action> for MinGBackend<State, Action>
+where
+    State: WorldState<Action>,
+    Action: Clone + Hash + Eq,
+{
+    fn enqueue(&mut self, item: Rc<Node<State, Action>>) {
+        let tot_cost = item.get_total_cost();
+        self.push(item, tot_cost);
+    }
+
+    fn dequeue(&mut self) -> Option<Rc<Node<State, Action>>> {
+        self.pop().map(|(node, _)| node)
+    }
+
+    fn delete(&mut self, state: &State) -> bool {
+        let mut to_remove = None;
+        for (a, _) in self.iter() {
+            if a.get_state() == state {
+                to_remove = a.clone().into();
+                break;
+            }
+        }
+        let mut result = false;
+        if let Some(node) = to_remove {
+            self.remove(&node);
+            result = true;
+        }
+        result
     }
 }

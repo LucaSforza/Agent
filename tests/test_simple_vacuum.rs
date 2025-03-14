@@ -47,7 +47,7 @@ mod tests {
             vec![Action::Left, Action::Right, Action::Suck].into_iter()
         }
 
-        fn result(&self, action: &Action) -> (Self, f32) {
+        fn result(&self, action: &Action) -> (Self, f64) {
             let result_state = match action {
                 Action::Left => Self::from_parts(Position::Left, self.right_state, self.left_state),
                 Action::Right => {

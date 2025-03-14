@@ -7,10 +7,13 @@ pub trait WorldState<Action>: Clone + Eq + Hash {
     type Iter: Iterator<Item = Action>;
 
     fn executable_actions(&self) -> Self::Iter;
-    fn result(&self, action: &Action) -> (Self, f32);
+    fn result(&self, action: &Action) -> (Self, f64);
     fn is_goal(&self) -> bool;
 }
 
+use ordered_float::OrderedFloat;
+
+#[derive(Hash, PartialEq, Eq)]
 pub struct Node<State, Action>
 where
     State: WorldState<Action>,
@@ -19,7 +22,7 @@ where
     state: State,
     parent: Option<Rc<Node<State, Action>>>,
     action: Option<Action>,
-    total_cost: f32,
+    total_cost: OrderedFloat<f64>,
     depth: usize,
 }
 
@@ -32,10 +35,10 @@ where
         parent: Option<Rc<Node<State, Action>>>,
         state: State,
         action: Option<Action>,
-        cost: f32,
+        cost: f64,
     ) -> Self {
         assert!((parent.is_none() && action.is_none()) || (parent.is_some() && action.is_some()));
-        let mut total_cost = cost;
+        let mut total_cost: OrderedFloat<f64> = cost.into();
         let mut depth = 0;
         if let Some(parent_node) = parent.as_ref() {
             total_cost += parent_node.total_cost;
@@ -68,7 +71,7 @@ where
         result
     }
 
-    pub fn get_total_cost(&self) -> f32 {
+    pub fn get_total_cost(&self) -> OrderedFloat<f64> {
         return self.total_cost;
     }
 
