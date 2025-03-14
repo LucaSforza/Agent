@@ -247,17 +247,17 @@ mod tests {
             Pos::new(0, 3),
             Pos::new(1, 1),
             Pos::new(1, 3),
-            Pos::new(2, 3),
-            Pos::new(2, 4),
-            Pos::new(3, 0),
+            Pos::new(2, 0),
+            Pos::new(2, 1),
             Pos::new(3, 1),
             Pos::new(3, 2),
             Pos::new(3, 3),
-            Pos::new(4, 0),
+            Pos::new(3, 4),
             Pos::new(4, 2),
+            Pos::new(4, 4),
         ];
 
-        let mut result = vec![
+        let result = vec![
             Action::Right,
             Action::Suck,
             Action::Left,
@@ -289,11 +289,12 @@ mod tests {
         ];
         // result.reverse(); // esposito result
 
-        let init_state = HouseState::with_dirty(4, 3, 5, 5, pos);
+        let init_state = HouseState::with_dirty(3, 4, 5, 5, pos);
         let explorer = BFSExplorer::<HouseState, Action>::new();
         let sresult = explorer.search(init_state);
         assert!(sresult.actions.is_some());
         let actions = sresult.actions.unwrap();
+        assert_eq!(result.len(), actions.len());
         eprintln!(
             "Result: {:?}, time: {:?}, n_iter: {}",
             actions, sresult.total_time, sresult.n_iter
