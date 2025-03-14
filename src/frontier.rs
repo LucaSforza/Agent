@@ -46,25 +46,10 @@ where
     }
 
     fn enqueue_or_replace(&mut self, item: Node<State, Action>) -> bool {
-        let mut to_swap = false;
-        if let Some(old_node) = self.get_node.get(item.get_state()) {
-            if old_node.get_total_cost() < item.get_total_cost() {
-                to_swap = true
-            } else {
-                return false; // se il costo è più alto allora ignora item
-            }
+        if self.get_node.contains_key(item.get_state()) {
+            return false;
         }
 
-        if to_swap {
-            self.get_node.remove(item.get_state());
-            let mut index = None;
-            for (i, n) in self.collection.iter().enumerate() {
-                if n.get_state() == item.get_state() {
-                    index = i.into();
-                }
-            }
-            self.collection.remove(index.unwrap());
-        }
         let state = item.get_state().clone();
         let to_insert = Rc::new(item);
         assert!(self.get_node.insert(state, to_insert.clone()).is_none());
@@ -96,18 +81,10 @@ where
     }
 
     fn enqueue_or_replace(&mut self, item: Node<State, Action>) -> bool {
-        let mut to_swap = false;
-        if let Some(old_node) = self.get_node.get(item.get_state()) {
-            if old_node.get_total_cost() < item.get_total_cost() {
-                to_swap = true
-            } else {
-                return false; // se il costo è più alto allora ignora item
-            }
+        if self.get_node.contains_key(item.get_state()) {
+            return false;
         }
 
-        if to_swap {
-            self.get_node.remove(item.get_state());
-        }
         let state = item.get_state().clone();
         let to_insert = Rc::new(item);
         self.get_node.insert(state, to_insert.clone());
