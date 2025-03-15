@@ -14,14 +14,14 @@ where
 {
     pub total_time: Duration,
     pub actions: Option<Vec<Action>>,
-    pub n_iter: u64,
+    pub n_iter: usize,
 }
 
 impl<Action> SearchResult<Action>
 where
     Action: Clone,
 {
-    pub fn found(start_time: Instant, actions: Vec<Action>, n_iter: u64) -> Self {
+    pub fn found(start_time: Instant, actions: Vec<Action>, n_iter: usize) -> Self {
         Self {
             total_time: start_time.elapsed(),
             actions: actions.into(),
@@ -29,7 +29,7 @@ where
         }
     }
 
-    pub fn not_found(start_time: Instant, n_iter: u64) -> Self {
+    pub fn not_found(start_time: Instant, n_iter: usize) -> Self {
         Self {
             total_time: start_time.elapsed(),
             actions: None,
@@ -38,13 +38,13 @@ where
     }
 }
 
+// TODO: add max depth for the nodes
 pub struct Explorer<State, Action, Backend>
 where
     State: WorldState<Action>,
     Action: Clone,
     Backend: FrontierBackend<State, Action>,
 {
-    max_depth: Option<u64>,
     _action: std::marker::PhantomData<Action>,
     _state: std::marker::PhantomData<State>,
     _backend: std::marker::PhantomData<Backend>,
@@ -58,23 +58,29 @@ where
 {
     pub fn new() -> Self {
         Self {
-            max_depth: None,
             _action: std::marker::PhantomData,
             _state: std::marker::PhantomData,
             _backend: std::marker::PhantomData,
         }
     }
 
-    pub fn with_max_depth(max_depth: u64) -> Self {
-        Self {
-            max_depth: max_depth.into(),
-            _action: std::marker::PhantomData,
-            _state: std::marker::PhantomData,
-            _backend: std::marker::PhantomData,
+    pub fn iterative_search(&self, init_state: State) -> SearchResult<Action> {
+        let mut lim = 0;
+        let mut result;
+        loop {
+            result = self.inner_search(init_state.clone(), lim.into());
+            if result.actions.is_some() {
+                return result;
+            } // TODO: quando capire che non esiste soluzione
+            lim += 1
         }
     }
 
-    pub fn search(self, init_state: State) -> SearchResult<Action> {
+    pub fn search(&self, init_state: State) -> SearchResult<Action> {
+        self.inner_search(init_state, None)
+    }
+
+    fn inner_search(&self, init_state: State, lim: Option<usize>) -> SearchResult<Action> {
         let mut frontier = Frontier::<State, Action, Backend>::new();
         let mut explored = HashSet::new();
         frontier.enqueue_or_replace(Node::new(None, init_state, None, 0.0));
@@ -85,7 +91,7 @@ where
         let start = Instant::now();
 
         while let Some(curr_node) = frontier.dequeue() {
-            if self.max_depth.map_or(false, |x| x >= n_iter) {
+            if lim.map_or(false, |x| x >= n_iter) {
                 result = SearchResult::<Action>::not_found(start, n_iter);
                 return result;
             }
