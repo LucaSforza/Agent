@@ -45,9 +45,8 @@ where
     Action: Clone,
     Backend: FrontierBackend<State, Action>,
 {
-    _action: std::marker::PhantomData<Action>,
-    _state: std::marker::PhantomData<State>,
-    _backend: std::marker::PhantomData<Backend>,
+    explored: HashSet<State>,
+    frontier: Frontier<State, Action, Backend>,
 }
 
 impl<State, Action, Backend> Explorer<State, Action, Backend>
@@ -58,13 +57,12 @@ where
 {
     pub fn new() -> Self {
         Self {
-            _action: std::marker::PhantomData,
-            _state: std::marker::PhantomData,
-            _backend: std::marker::PhantomData,
+            explored: HashSet::new(),
+            frontier: Frontier::new(),
         }
     }
 
-    pub fn iterative_search(&self, init_state: State) -> SearchResult<Action> {
+    pub fn iterative_search(&mut self, init_state: State) -> SearchResult<Action> {
         let mut lim = 0;
         let mut result;
         loop {
@@ -72,25 +70,27 @@ where
             if result.actions.is_some() {
                 return result;
             } // TODO: quando capire che non esiste soluzione
+              // TODO: salvarsi i tempi per poi sommarli
             lim += 1
         }
     }
 
-    pub fn search(&self, init_state: State) -> SearchResult<Action> {
+    pub fn search(&mut self, init_state: State) -> SearchResult<Action> {
         self.inner_search(init_state, None)
     }
 
-    fn inner_search(&self, init_state: State, lim: Option<usize>) -> SearchResult<Action> {
-        let mut frontier = Frontier::<State, Action, Backend>::new();
-        let mut explored = HashSet::new();
-        frontier.enqueue_or_replace(Node::new(None, init_state, None, 0.0));
+    fn inner_search(&mut self, init_state: State, lim: Option<usize>) -> SearchResult<Action> {
+        self.frontier.reset();
+        self.explored.clear();
+        self.frontier
+            .enqueue_or_replace(Node::new(None, init_state, None, 0.0));
 
         let mut n_iter = 0;
         let result: SearchResult<Action>;
 
         let start = Instant::now();
 
-        while let Some(curr_node) = frontier.dequeue() {
+        while let Some(curr_node) = self.frontier.dequeue() {
             if lim.map_or(false, |x| x >= n_iter) {
                 result = SearchResult::<Action>::not_found(start, n_iter);
                 return result;
@@ -104,18 +104,18 @@ where
             } else {
                 for action in curr_state.executable_actions() {
                     let (new_state, cost) = curr_state.result(&action);
-                    if !explored.contains(&new_state) {
+                    if !self.explored.contains(&new_state) {
                         let new_node = Node::new(
                             Some(curr_node.clone()),
                             new_state.clone(),
                             Some(action),
                             cost,
                         );
-                        frontier.enqueue_or_replace(new_node);
+                        self.frontier.enqueue_or_replace(new_node);
                     }
                 }
             }
-            explored.insert(curr_state.clone());
+            self.explored.insert(curr_state.clone());
         }
         result = SearchResult::<Action>::not_found(start, n_iter);
         return result;

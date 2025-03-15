@@ -15,6 +15,7 @@ where
     fn enqueue(&mut self, item: Rc<Node<State, Action>>);
     fn dequeue(&mut self) -> Option<Rc<Node<State, Action>>>;
     fn delete(&mut self, state: &State) -> bool;
+    fn reset(&mut self);
 }
 
 pub struct Frontier<State, Action, Backend>
@@ -73,6 +74,11 @@ where
         }
         result
     }
+
+    pub fn reset(&mut self) {
+        self.collection.reset();
+        self.get_node.clear();
+    }
 }
 
 pub type DequeBackend<State, Action> = VecDeque<Rc<Node<State, Action>>>;
@@ -103,6 +109,10 @@ where
         }
         return false;
     }
+
+    fn reset(&mut self) {
+        self.clear();
+    }
 }
 
 pub type StackBackend<State, Action> = Vec<Rc<Node<State, Action>>>;
@@ -132,6 +142,10 @@ where
             return true;
         }
         return false;
+    }
+
+    fn reset(&mut self) {
+        self.clear();
     }
 }
 use ordered_float::OrderedFloat;
@@ -168,5 +182,9 @@ where
             result = true;
         }
         result
+    }
+
+    fn reset(&mut self) {
+        self.clear();
     }
 }

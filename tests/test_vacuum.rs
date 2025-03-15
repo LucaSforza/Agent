@@ -156,7 +156,7 @@ mod tests {
                 Pos::new(31, 31),
             ],
         );
-        let explorer = BFSExplorer::<HouseState, Action>::new();
+        let mut explorer = BFSExplorer::<HouseState, Action>::new();
         let result = explorer.search(init_state);
         assert!(result.actions.is_some());
         let res = result.actions.unwrap();
@@ -169,7 +169,7 @@ mod tests {
     #[test]
     fn test_vacuum_bfs_clean() {
         let init_state = HouseState::with_dirty(3, 2, 32, 32, vec![]);
-        let explorer = BFSExplorer::<HouseState, Action>::new();
+        let mut explorer = BFSExplorer::<HouseState, Action>::new();
         let result = explorer.search(init_state);
         assert!(result.actions.is_some());
         let res = result.actions.unwrap();
@@ -181,7 +181,7 @@ mod tests {
 
     #[test]
     fn test_vacuum_dfs() {
-        let explorer = DFSExplorer::<HouseState, Action>::new();
+        let mut explorer = DFSExplorer::<HouseState, Action>::new();
         let init_state = HouseState::with_dirty(
             3,
             2,
@@ -206,7 +206,7 @@ mod tests {
 
     #[test]
     fn test_vacuum_dfs_clean() {
-        let explorer = DFSExplorer::<HouseState, Action>::new();
+        let mut explorer = DFSExplorer::<HouseState, Action>::new();
         let init_state = HouseState::with_dirty(3, 2, 32, 32, vec![]);
         let result = explorer.search(init_state);
         assert!(result.actions.is_some());
@@ -236,7 +236,7 @@ mod tests {
         ];
 
         let init_state = HouseState::with_dirty(4, 3, 5, 5, pos);
-        let explorer = DFSExplorer::<HouseState, Action>::new();
+        let mut explorer = DFSExplorer::<HouseState, Action>::new();
         let sresult = explorer.search(init_state);
         assert!(sresult.actions.is_some());
         let actions = sresult.actions.unwrap();
@@ -328,7 +328,7 @@ mod tests {
         ];
 
         let init_state = HouseState::with_dirty(3, 4, 5, 5, pos);
-        let explorer = BFSExplorer::<HouseState, Action>::new();
+        let mut explorer = BFSExplorer::<HouseState, Action>::new();
         let sresult = explorer.search(init_state);
         assert!(sresult.actions.is_some());
         let actions = sresult.actions.unwrap();
@@ -389,7 +389,7 @@ mod tests {
         ];
 
         let init_state = HouseState::with_dirty(3, 4, 5, 5, pos);
-        let explorer = MinCostExplorer::<HouseState, Action>::new();
+        let mut explorer = MinCostExplorer::<HouseState, Action>::new();
         let sresult = explorer.search(init_state);
         assert!(sresult.actions.is_some());
         let actions = sresult.actions.unwrap();
