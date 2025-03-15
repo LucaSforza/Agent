@@ -156,224 +156,86 @@ where
 use ordered_float::OrderedFloat;
 use priority_queue::PriorityQueue;
 
-pub struct MinGBackend<State, Action>(
-    PriorityQueue<Rc<Node<State, Action>>, Reverse<OrderedFloat<f64>>>,
-)
-where
-    State: WorldState<Action>,
-    Action: Clone;
+macro_rules! create_backend {
+    ($name:ident, $cost_fn:ident) => {
+        pub struct $name<State, Action>(
+            PriorityQueue<Rc<Node<State, Action>>, Reverse<OrderedFloat<f64>>>,
+        )
+        where
+            State: WorldState<Action>,
+            Action: Clone;
 
-impl<State, Action> Deref for MinGBackend<State, Action>
-where
-    State: WorldState<Action>,
-    Action: Clone,
-{
-    type Target = PriorityQueue<Rc<Node<State, Action>>, Reverse<OrderedFloat<f64>>>;
+        impl<State, Action> Deref for $name<State, Action>
+        where
+            State: WorldState<Action>,
+            Action: Clone,
+        {
+            type Target = PriorityQueue<Rc<Node<State, Action>>, Reverse<OrderedFloat<f64>>>;
 
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl<State, Action> DerefMut for MinGBackend<State, Action>
-where
-    State: WorldState<Action>,
-    Action: Clone,
-{
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-impl<State, Action> Default for MinGBackend<State, Action>
-where
-    State: WorldState<Action>,
-    Action: Clone + Hash + Eq,
-{
-    fn default() -> Self {
-        Self(Default::default())
-    }
-}
-
-impl<State, Action> FrontierBackend<State, Action> for MinGBackend<State, Action>
-where
-    State: WorldState<Action>,
-    Action: Clone + Hash + Eq,
-{
-    fn enqueue(&mut self, item: Rc<Node<State, Action>>) {
-        let tot_cost = item.get_g_cost();
-        self.push(item, Reverse(tot_cost));
-    }
-
-    fn dequeue(&mut self) -> Option<Rc<Node<State, Action>>> {
-        self.pop().map(|(node, _)| node)
-    }
-
-    fn delete(&mut self, state: &State) -> bool {
-        let mut to_remove = None;
-        for (a, _) in self.iter() {
-            if a.get_state() == state {
-                to_remove = a.clone().into();
-                break;
+            fn deref(&self) -> &Self::Target {
+                &self.0
             }
         }
-        let mut result = false;
-        if let Some(node) = to_remove {
-            self.remove(&node);
-            result = true;
-        }
-        result
-    }
 
-    fn reset(&mut self) {
-        self.clear();
-    }
-}
-
-pub struct MinHBackend<State, Action>(
-    PriorityQueue<Rc<Node<State, Action>>, Reverse<OrderedFloat<f64>>>,
-)
-where
-    State: WorldState<Action>,
-    Action: Clone;
-
-impl<State, Action> Deref for MinHBackend<State, Action>
-where
-    State: WorldState<Action>,
-    Action: Clone,
-{
-    type Target = PriorityQueue<Rc<Node<State, Action>>, Reverse<OrderedFloat<f64>>>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl<State, Action> DerefMut for MinHBackend<State, Action>
-where
-    State: WorldState<Action>,
-    Action: Clone,
-{
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-impl<State, Action> Default for MinHBackend<State, Action>
-where
-    State: WorldState<Action>,
-    Action: Clone + Hash + Eq,
-{
-    fn default() -> Self {
-        Self(Default::default())
-    }
-}
-
-impl<State, Action> FrontierBackend<State, Action> for MinHBackend<State, Action>
-where
-    State: WorldState<Action>,
-    Action: Clone + Hash + Eq,
-{
-    fn enqueue(&mut self, item: Rc<Node<State, Action>>) {
-        let tot_cost = item.get_g_cost();
-        self.push(item, Reverse(tot_cost));
-    }
-
-    fn dequeue(&mut self) -> Option<Rc<Node<State, Action>>> {
-        self.pop().map(|(node, _)| node)
-    }
-
-    fn delete(&mut self, state: &State) -> bool {
-        let mut to_remove = None;
-        for (a, _) in self.iter() {
-            if a.get_state() == state {
-                to_remove = a.clone().into();
-                break;
+        impl<State, Action> DerefMut for $name<State, Action>
+        where
+            State: WorldState<Action>,
+            Action: Clone,
+        {
+            fn deref_mut(&mut self) -> &mut Self::Target {
+                &mut self.0
             }
         }
-        let mut result = false;
-        if let Some(node) = to_remove {
-            self.remove(&node);
-            result = true;
-        }
-        result
-    }
 
-    fn reset(&mut self) {
-        self.clear();
-    }
-}
-
-pub struct MinFBackend<State, Action>(
-    PriorityQueue<Rc<Node<State, Action>>, Reverse<OrderedFloat<f64>>>,
-)
-where
-    State: WorldState<Action>,
-    Action: Clone;
-
-impl<State, Action> Deref for MinFBackend<State, Action>
-where
-    State: WorldState<Action>,
-    Action: Clone,
-{
-    type Target = PriorityQueue<Rc<Node<State, Action>>, Reverse<OrderedFloat<f64>>>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl<State, Action> DerefMut for MinFBackend<State, Action>
-where
-    State: WorldState<Action>,
-    Action: Clone,
-{
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-impl<State, Action> Default for MinFBackend<State, Action>
-where
-    State: WorldState<Action>,
-    Action: Clone + Hash + Eq,
-{
-    fn default() -> Self {
-        Self(Default::default())
-    }
-}
-
-impl<State, Action> FrontierBackend<State, Action> for MinFBackend<State, Action>
-where
-    State: WorldState<Action>,
-    Action: Clone + Hash + Eq,
-{
-    fn enqueue(&mut self, item: Rc<Node<State, Action>>) {
-        let tot_cost = item.get_g_cost();
-        self.push(item, Reverse(tot_cost));
-    }
-
-    fn dequeue(&mut self) -> Option<Rc<Node<State, Action>>> {
-        self.pop().map(|(node, _)| node)
-    }
-
-    fn delete(&mut self, state: &State) -> bool {
-        let mut to_remove = None;
-        for (a, _) in self.iter() {
-            if a.get_state() == state {
-                to_remove = a.clone().into();
-                break;
+        impl<State, Action> Default for $name<State, Action>
+        where
+            State: WorldState<Action>,
+            Action: Clone + Hash + Eq,
+        {
+            fn default() -> Self {
+                Self(Default::default())
             }
         }
-        let mut result = false;
-        if let Some(node) = to_remove {
-            self.remove(&node);
-            result = true;
-        }
-        result
-    }
 
-    fn reset(&mut self) {
-        self.clear();
-    }
+        impl<State, Action> FrontierBackend<State, Action> for $name<State, Action>
+        where
+            State: WorldState<Action>,
+            Action: Clone + Hash + Eq,
+        {
+            fn enqueue(&mut self, item: Rc<Node<State, Action>>) {
+                let cost = item.$cost_fn();
+                self.push(item, Reverse(OrderedFloat::from(cost)));
+            }
+
+            fn dequeue(&mut self) -> Option<Rc<Node<State, Action>>> {
+                self.pop().map(|(node, _)| node)
+            }
+
+            fn delete(&mut self, state: &State) -> bool {
+                let to_remove = self.iter().find_map(|(node, _)| {
+                    if node.get_state() == state {
+                        Some(node.clone())
+                    } else {
+                        None
+                    }
+                });
+
+                if let Some(node) = to_remove {
+                    self.remove(&node);
+                    true
+                } else {
+                    false
+                }
+            }
+
+            fn reset(&mut self) {
+                self.clear();
+            }
+        }
+    };
 }
+
+// Genera le strutture specifiche utilizzando la macro
+create_backend!(MinGBackend, get_g_cost);
+create_backend!(MinHBackend, get_h_cost);
+create_backend!(MinFBackend, get_f_cost);
