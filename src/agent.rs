@@ -47,7 +47,7 @@ where
             depth = parent_node.depth + 1;
         }
         let h = state.heuristic();
-        Node {
+        Self {
             state: state,
             parent: parent,
             action: action,
@@ -89,5 +89,9 @@ where
 
     pub fn get_state(&self) -> &State {
         &self.state
+    }
+
+    pub fn get_depth(&self) -> usize {
+        self.depth
     }
 }

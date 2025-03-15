@@ -79,6 +79,10 @@ where
         self.collection.reset();
         self.get_node.clear();
     }
+
+    pub fn size(&self) -> usize {
+        self.get_node.len()
+    }
 }
 
 pub type DequeBackend<State, Action> = VecDeque<Rc<Node<State, Action>>>;
