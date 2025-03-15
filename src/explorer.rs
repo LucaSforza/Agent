@@ -208,6 +208,6 @@ where
 pub type BFSExplorer<State, Action> = Explorer<State, Action, DequeBackend<State, Action>>;
 pub type DFSExplorer<State, Action> = Explorer<State, Action, StackBackend<State, Action>>;
 pub type MinCostExplorer<State, Action> = Explorer<State, Action, MinGBackend<State, Action>>;
-pub type BestFindGreedyExplorer<State, Action> =
+pub type BestFirstGreedyExplorer<State, Action> =
     Explorer<State, Action, MinHBackend<State, Action>>;
 pub type AStarExplore<State, Action> = Explorer<State, Action, MinFBackend<State, Action>>;

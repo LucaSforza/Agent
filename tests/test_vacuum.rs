@@ -3,7 +3,9 @@ mod tests {
     use std::rc::Rc;
 
     use agent::agent::WorldState;
-    use agent::explorer::{BFSExplorer, DFSExplorer, MinCostExplorer};
+    use agent::explorer::{
+        AStarExplore, BFSExplorer, BestFirstGreedyExplorer, DFSExplorer, MinCostExplorer,
+    };
     // use frontier::DequeFrontier;
 
     #[derive(Clone, PartialEq, Eq, Hash, Copy, Debug)]
@@ -431,6 +433,60 @@ mod tests {
         assert!(sresult.actions.is_some());
         let actions = sresult.actions.clone().unwrap();
         assert_eq!(actions, expected_result);
+        eprintln!("{}", sresult);
+    }
+
+    #[test]
+    fn test_vacuum_best_first_esposito() {
+        let pos = vec![
+            Pos::new(0, 1),
+            Pos::new(0, 2),
+            Pos::new(0, 3),
+            Pos::new(1, 1),
+            Pos::new(1, 3),
+            Pos::new(2, 0),
+            Pos::new(2, 1),
+            Pos::new(3, 1),
+            Pos::new(3, 2),
+            Pos::new(3, 3),
+            Pos::new(3, 4),
+            Pos::new(4, 2),
+            Pos::new(4, 4),
+        ];
+
+        let init_state = HouseState::with_dirty(3, 4, 5, 5, pos);
+        let mut explorer = BestFirstGreedyExplorer::<HouseState, Action>::new();
+        let sresult = explorer.search(init_state);
+        assert!(sresult.actions.is_some());
+        // let actions = sresult.actions.clone().unwrap();
+        // assert_eq!(actions, expected_result);
+        eprintln!("{}", sresult);
+    }
+
+    #[test]
+    fn test_vacuum_a_star_esposito() {
+        let pos = vec![
+            Pos::new(0, 1),
+            Pos::new(0, 2),
+            Pos::new(0, 3),
+            Pos::new(1, 1),
+            Pos::new(1, 3),
+            Pos::new(2, 0),
+            Pos::new(2, 1),
+            Pos::new(3, 1),
+            Pos::new(3, 2),
+            Pos::new(3, 3),
+            Pos::new(3, 4),
+            Pos::new(4, 2),
+            Pos::new(4, 4),
+        ];
+
+        let init_state = HouseState::with_dirty(3, 4, 5, 5, pos);
+        let mut explorer = AStarExplore::<HouseState, Action>::new();
+        let sresult = explorer.search(init_state);
+        assert!(sresult.actions.is_some());
+        // let actions = sresult.actions.clone().unwrap();
+        // assert_eq!(actions, expected_result);
         eprintln!("{}", sresult);
     }
 }
