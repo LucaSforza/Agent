@@ -132,8 +132,7 @@ where
                 result.total_time = start.elapsed();
                 result.actions = inner_result.actions;
                 return result;
-            } // TODO: quando capire che non esiste soluzione
-              // TODO: salvarsi i tempi per poi sommarli
+            }
             lim += 1
         }
     }
