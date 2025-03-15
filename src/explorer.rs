@@ -137,6 +137,16 @@ where
         }
     }
 
+    pub fn search_with_max_depth(
+        &mut self,
+        init_state: State,
+        max_depth: usize,
+    ) -> SearchResult<Action> {
+        let start = Instant::now();
+        let result = self.inner_search(init_state, max_depth.into());
+        SearchResult::from_inner_result(start, result)
+    }
+
     pub fn search(&mut self, init_state: State) -> SearchResult<Action> {
         let start = Instant::now();
         let result = self.inner_search(init_state, None);
