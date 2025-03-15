@@ -1,4 +1,5 @@
 use std::{
+    cmp::Reverse,
     collections::{HashMap, VecDeque},
     hash::Hash,
     rc::Rc,
@@ -44,7 +45,7 @@ where
     pub fn enqueue_or_replace(&mut self, item: Node<State, Action>) -> bool {
         let mut to_remove = None;
         if let Some(old_node) = self.get_node.get(item.get_state()) {
-            if old_node.get_total_cost() > item.get_total_cost() {
+            if old_node.get_g_cost() > item.get_g_cost() {
                 to_remove = old_node.get_state().clone().into();
             } else {
                 return false;
@@ -136,7 +137,8 @@ where
 use ordered_float::OrderedFloat;
 use priority_queue::PriorityQueue;
 
-pub type MinGBackend<State, Action> = PriorityQueue<Rc<Node<State, Action>>, OrderedFloat<f64>>;
+pub type MinGBackend<State, Action> =
+    PriorityQueue<Rc<Node<State, Action>>, Reverse<OrderedFloat<f64>>>;
 
 impl<State, Action> FrontierBackend<State, Action> for MinGBackend<State, Action>
 where
@@ -144,8 +146,8 @@ where
     Action: Clone + Hash + Eq,
 {
     fn enqueue(&mut self, item: Rc<Node<State, Action>>) {
-        let tot_cost = item.get_total_cost();
-        self.push(item, tot_cost);
+        let tot_cost = item.get_g_cost();
+        self.push(item, Reverse(tot_cost));
     }
 
     fn dequeue(&mut self) -> Option<Rc<Node<State, Action>>> {

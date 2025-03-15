@@ -5,7 +5,7 @@ use std::{
 
 use crate::{
     agent::{Node, WorldState},
-    frontier::{DequeBackend, Frontier, FrontierBackend, StackBackend},
+    frontier::{DequeBackend, Frontier, FrontierBackend, MinGBackend, StackBackend},
 };
 
 pub struct SearchResult<Action>
@@ -118,3 +118,4 @@ where
 
 pub type BFSExplorer<State, Action> = Explorer<State, Action, DequeBackend<State, Action>>;
 pub type DFSExplorer<State, Action> = Explorer<State, Action, StackBackend<State, Action>>;
+pub type MinCostExplorer<State, Action> = Explorer<State, Action, MinGBackend<State, Action>>;

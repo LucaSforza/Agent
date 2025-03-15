@@ -9,6 +9,7 @@ pub trait WorldState<Action>: Clone + Eq + Hash {
     fn executable_actions(&self) -> Self::Iter;
     fn result(&self, action: &Action) -> (Self, f64);
     fn is_goal(&self) -> bool;
+    fn heuristic(&self) -> f64;
 }
 
 use ordered_float::OrderedFloat;
@@ -23,6 +24,7 @@ where
     parent: Option<Rc<Node<State, Action>>>,
     action: Option<Action>,
     total_cost: OrderedFloat<f64>,
+    heuristic: OrderedFloat<f64>,
     depth: usize,
 }
 
@@ -44,12 +46,14 @@ where
             total_cost += parent_node.total_cost;
             depth = parent_node.depth + 1;
         }
+        let h = state.heuristic();
         Node {
             state: state,
             parent: parent,
             action: action,
             total_cost: total_cost,
             depth: depth,
+            heuristic: h.into(),
         }
     }
 
@@ -71,8 +75,16 @@ where
         result
     }
 
-    pub fn get_total_cost(&self) -> OrderedFloat<f64> {
+    pub fn get_g_cost(&self) -> OrderedFloat<f64> {
         return self.total_cost;
+    }
+
+    pub fn get_h_cost(&self) -> OrderedFloat<f64> {
+        return self.heuristic;
+    }
+
+    pub fn get_f_cost(&self) -> OrderedFloat<f64> {
+        return self.total_cost + self.heuristic;
     }
 
     pub fn get_state(&self) -> &State {

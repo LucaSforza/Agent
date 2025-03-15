@@ -3,7 +3,7 @@ mod tests {
     use std::rc::Rc;
 
     use agent::agent::WorldState;
-    use agent::explorer::{BFSExplorer, DFSExplorer};
+    use agent::explorer::{BFSExplorer, DFSExplorer, MinCostExplorer};
     // use frontier::DequeFrontier;
 
     #[derive(Clone, PartialEq, Eq, Hash, Copy, Debug)]
@@ -135,6 +135,10 @@ mod tests {
         fn is_goal(&self) -> bool {
             return self.where_dirty.is_empty();
         }
+
+        fn heuristic(&self) -> f64 {
+            return self.where_dirty.len() as f64;
+        }
     }
 
     #[test]
@@ -236,7 +240,12 @@ mod tests {
         let sresult = explorer.search(init_state);
         assert!(sresult.actions.is_some());
         let actions = sresult.actions.unwrap();
-        println!("actions: {:?}, time: {:?}", actions, sresult.total_time);
+        println!(
+            "actions: {:?}, time: {:?}, len result: {}",
+            actions,
+            sresult.total_time,
+            actions.len()
+        );
     }
 
     #[test]
@@ -256,7 +265,7 @@ mod tests {
             Pos::new(4, 2),
             Pos::new(4, 4),
         ];
-
+        /*
         let result = vec![
             Action::Right,
             Action::Suck,
@@ -286,15 +295,105 @@ mod tests {
             Action::Suck,
             Action::Right,
             Action::Suck,
+        ]; */
+        let expected_result = vec![
+            Action::Suck,
+            Action::Right,
+            Action::Suck,
+            Action::Left,
+            Action::Up,
+            Action::Suck,
+            Action::Left,
+            Action::Left,
+            Action::Suck,
+            Action::Left,
+            Action::Suck,
+            Action::Up,
+            Action::Suck,
+            Action::Up,
+            Action::Suck,
+            Action::Right,
+            Action::Suck,
+            Action::Right,
+            Action::Suck,
+            Action::Up,
+            Action::Suck,
+            Action::Right,
+            Action::Down,
+            Action::Suck,
+            Action::Down,
+            Action::Suck,
+            Action::Right,
+            Action::Suck,
         ];
-        // result.reverse(); // esposito result
 
         let init_state = HouseState::with_dirty(3, 4, 5, 5, pos);
         let explorer = BFSExplorer::<HouseState, Action>::new();
         let sresult = explorer.search(init_state);
         assert!(sresult.actions.is_some());
         let actions = sresult.actions.unwrap();
-        assert_eq!(result.len(), actions.len());
+        assert_eq!(actions, expected_result);
+        eprintln!(
+            "Result: {:?}, time: {:?}, n_iter: {}",
+            actions, sresult.total_time, sresult.n_iter
+        );
+    }
+
+    #[test]
+    fn test_vacuum_min_cost_esposito() {
+        let pos = vec![
+            Pos::new(0, 1),
+            Pos::new(0, 2),
+            Pos::new(0, 3),
+            Pos::new(1, 1),
+            Pos::new(1, 3),
+            Pos::new(2, 0),
+            Pos::new(2, 1),
+            Pos::new(3, 1),
+            Pos::new(3, 2),
+            Pos::new(3, 3),
+            Pos::new(3, 4),
+            Pos::new(4, 2),
+            Pos::new(4, 4),
+        ];
+
+        let expected_result = vec![
+            Action::Suck,
+            Action::Right,
+            Action::Suck,
+            Action::Up,
+            Action::Left,
+            Action::Suck,
+            Action::Left,
+            Action::Left,
+            Action::Suck,
+            Action::Left,
+            Action::Suck,
+            Action::Up,
+            Action::Suck,
+            Action::Up,
+            Action::Suck,
+            Action::Right,
+            Action::Suck,
+            Action::Right,
+            Action::Suck,
+            Action::Up,
+            Action::Suck,
+            Action::Down,
+            Action::Right,
+            Action::Suck,
+            Action::Down,
+            Action::Suck,
+            Action::Right,
+            Action::Suck,
+        ];
+
+        let init_state = HouseState::with_dirty(3, 4, 5, 5, pos);
+        let explorer = MinCostExplorer::<HouseState, Action>::new();
+        let sresult = explorer.search(init_state);
+        assert!(sresult.actions.is_some());
+        let actions = sresult.actions.unwrap();
+        assert_eq!(actions, expected_result);
         eprintln!(
             "Result: {:?}, time: {:?}, n_iter: {}",
             actions, sresult.total_time, sresult.n_iter

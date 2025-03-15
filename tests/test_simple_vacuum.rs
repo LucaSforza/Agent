@@ -68,6 +68,20 @@ mod tests {
         fn is_goal(&self) -> bool {
             return self.left_state == TailState::Clean && self.right_state == TailState::Clean;
         }
+
+        fn heuristic(&self) -> f64 {
+            let mut result = 0.0;
+
+            if self.left_state == TailState::Clean {
+                result += 1.0;
+            }
+
+            if self.right_state == TailState::Clean {
+                result += 1.0;
+            }
+
+            return result;
+        }
     }
 
     #[test]
