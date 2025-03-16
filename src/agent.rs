@@ -61,6 +61,7 @@ where
     }
 
     pub fn get_plan(&self) -> Vec<Action> {
+        assert!(!self.is_dead());
         let mut result: Vec<Action> = Vec::with_capacity(self.depth);
 
         if self.action.is_some() {

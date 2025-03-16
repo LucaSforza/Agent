@@ -489,12 +489,43 @@ mod tests {
             Pos::new(4, 4),
         ];
 
+        let expected_result = vec![
+            Action::Suck,
+            Action::Right,
+            Action::Suck,
+            Action::Left,
+            Action::Up,
+            Action::Suck,
+            Action::Left,
+            Action::Left,
+            Action::Suck,
+            Action::Left,
+            Action::Suck,
+            Action::Up,
+            Action::Suck,
+            Action::Up,
+            Action::Suck,
+            Action::Right,
+            Action::Suck,
+            Action::Right,
+            Action::Up,
+            Action::Suck,
+            Action::Down,
+            Action::Suck,
+            Action::Right,
+            Action::Suck,
+            Action::Down,
+            Action::Suck,
+            Action::Right,
+            Action::Suck,
+        ];
+
         let init_state = HouseState::with_dirty(3, 4, 5, 5, pos);
         let mut explorer = AStarExplore::<HouseState, Action>::new();
         let sresult = explorer.search(init_state);
         assert!(sresult.actions.is_some());
-        // let actions = sresult.actions.clone().unwrap();
-        // assert_eq!(actions, expected_result);
+        let actions = sresult.actions.clone().unwrap();
+        assert_eq!(actions, expected_result);
         eprintln!("{}", sresult);
     }
 }
