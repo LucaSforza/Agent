@@ -139,7 +139,15 @@ mod tests {
         }
 
         fn heuristic(&self) -> f64 {
-            return self.where_dirty.len() as f64;
+            let mut result = 0.0;
+            let mut pos: &Pos = &self.pos;
+            for dirty_pos in self.where_dirty.iter() {
+                result += ((dirty_pos.x as isize - pos.x as isize).abs()
+                    + (dirty_pos.y as isize - pos.y as isize).abs())
+                    as f64;
+                pos = dirty_pos;
+            }
+            return result;
         }
     }
 
