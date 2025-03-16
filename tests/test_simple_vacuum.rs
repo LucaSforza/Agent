@@ -11,19 +11,19 @@ mod tests {
         Suck,
     }
 
-    #[derive(Clone, PartialEq, Eq, Hash, Copy)]
+    #[derive(Clone, PartialEq, Eq, Hash, Copy, Debug)]
     enum Position {
         Left,
         Right,
     }
 
-    #[derive(Clone, PartialEq, Eq, Hash, Copy)]
+    #[derive(Clone, PartialEq, Eq, Hash, Copy, Debug)]
     enum TailState {
         Clean,
         Dirty,
     }
 
-    #[derive(Clone, PartialEq, Eq, Hash)]
+    #[derive(Clone, PartialEq, Eq, Hash, Debug)]
     struct HouseState {
         pos: Position,
         right_state: TailState,

@@ -1,10 +1,11 @@
 use std::cell::RefCell;
 use std::clone::Clone;
+use std::fmt::Debug;
 use std::hash::Hash;
 use std::rc::Rc;
 use std::vec::Vec;
 
-pub trait WorldState<Action>: Clone + Eq + Hash {
+pub trait WorldState<Action>: Clone + Eq + Hash + Debug {
     type Iter: Iterator<Item = Action>;
 
     fn executable_actions(&self) -> Self::Iter;
@@ -105,6 +106,21 @@ where
 
     pub fn is_dead(&self) -> bool {
         *self.dead.borrow()
+    }
+}
+
+impl<State, Action> Debug for Node<State, Action>
+where
+    State: WorldState<Action>,
+    Action: Clone,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Node")
+            .field("state", &self.state)
+            .field("total_cost", &self.total_cost)
+            .field("heuristic", &self.heuristic)
+            .field("depth", &self.depth)
+            .finish()
     }
 }
 

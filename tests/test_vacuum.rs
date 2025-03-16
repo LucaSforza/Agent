@@ -24,7 +24,7 @@ mod tests {
         }
     }
 
-    #[derive(Clone, PartialEq, Eq, Hash)]
+    #[derive(Clone, PartialEq, Eq, Hash, Debug)]
     struct Pos {
         x: usize,
         y: usize,
@@ -36,7 +36,7 @@ mod tests {
         }
     }
 
-    #[derive(Clone, PartialEq, Eq, Hash)]
+    #[derive(Clone, PartialEq, Eq, Hash, Debug)]
     struct HouseState {
         pos: Pos,
         rows: usize,

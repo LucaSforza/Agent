@@ -1,6 +1,7 @@
 use std::{
     cmp::Reverse,
     collections::{HashMap, VecDeque},
+    fmt::Debug,
     hash::Hash,
     ops::{Deref, DerefMut},
     rc::Rc,
@@ -88,6 +89,17 @@ where
     }
 }
 
+impl<State, Action, Backend> Debug for Frontier<State, Action, Backend>
+where
+    State: WorldState<Action>,
+    Action: Clone,
+    Backend: FrontierBackend<State, Action> + Debug,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self.collection)
+    }
+}
+
 pub type DequeBackend<State, Action> = VecDeque<Rc<Node<State, Action>>>;
 
 impl<State, Action> FrontierBackend<State, Action> for DequeBackend<State, Action>
@@ -133,6 +145,7 @@ use priority_queue::PriorityQueue;
 
 macro_rules! create_backend {
     ($name:ident, $cost_fn:ident) => {
+        #[derive(Debug)]
         pub struct $name<State, Action>(
             PriorityQueue<Rc<Node<State, Action>>, Reverse<OrderedFloat<f64>>>,
         )

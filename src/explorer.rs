@@ -89,13 +89,20 @@ where
     }
 }
 
+#[derive(PartialEq, Eq)]
+pub enum Verbosity {
+    None,
+    Low,
+}
+
 // TODO: add max depth for the nodes
 pub struct Explorer<State, Action, Backend>
 where
     State: WorldState<Action>,
     Action: Clone,
-    Backend: FrontierBackend<State, Action>,
+    Backend: FrontierBackend<State, Action> + Debug,
 {
+    verbosity: Verbosity,
     explored: HashSet<State>,
     frontier: Frontier<State, Action, Backend>,
 }
@@ -104,10 +111,27 @@ impl<State, Action, Backend> Explorer<State, Action, Backend>
 where
     State: WorldState<Action>,
     Action: Clone,
-    Backend: FrontierBackend<State, Action>,
+    Backend: FrontierBackend<State, Action> + Debug,
 {
+    pub fn with_verbosity(verbosity: Verbosity) -> Self {
+        Self {
+            verbosity: verbosity,
+            explored: HashSet::new(),
+            frontier: Frontier::new(),
+        }
+    }
+
+    pub fn with_low_v() -> Self {
+        Self {
+            verbosity: Verbosity::Low,
+            explored: HashSet::new(),
+            frontier: Frontier::new(),
+        }
+    }
+
     pub fn new() -> Self {
         Self {
+            verbosity: Verbosity::None,
             explored: HashSet::new(),
             frontier: Frontier::new(),
         }
@@ -166,11 +190,12 @@ where
         let result: InnerResult<Action>;
 
         let mut max_frontier_size = 0;
-
+        self.eprint_status(n_iter);
         while let Some(curr_node) = self.frontier.dequeue() {
             n_iter += 1;
 
             let curr_state = curr_node.get_state();
+
             if curr_state.is_goal() {
                 result = InnerResult::<Action>::found(
                     curr_node.get_plan().into(),
@@ -199,9 +224,19 @@ where
             if max_frontier_size < self.frontier.size() {
                 max_frontier_size = self.frontier.size();
             }
+            self.eprint_status(n_iter);
         }
         result = InnerResult::<Action>::not_found(n_iter, max_frontier_size);
         return result;
+    }
+
+    fn eprint_status(&self, n_iter: usize) {
+        if self.verbosity == Verbosity::Low {
+            eprintln!(
+                "iter: {} Frontier: {:?} Explored: {:?}",
+                n_iter, self.frontier, self.explored
+            )
+        }
     }
 }
 
