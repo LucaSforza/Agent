@@ -15,7 +15,6 @@ pub trait WorldState<Action>: Clone + Eq + Hash {
 
 use ordered_float::OrderedFloat;
 
-// TODO: mettere un campo "dead" e rimuovere la possibilità della frontiera di rimuovere i nodi, ma semplicemete di ignorarli
 #[derive(PartialEq, Eq)]
 pub struct Node<State, Action>
 where
