@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::clone::Clone;
 use std::hash::Hash;
 use std::rc::Rc;
@@ -14,7 +15,8 @@ pub trait WorldState<Action>: Clone + Eq + Hash {
 
 use ordered_float::OrderedFloat;
 
-#[derive(Hash, PartialEq, Eq)]
+// TODO: mettere un campo "dead" e rimuovere la possibilità della frontiera di rimuovere i nodi, ma semplicemete di ignorarli
+#[derive(PartialEq, Eq)]
 pub struct Node<State, Action>
 where
     State: WorldState<Action>,
@@ -26,6 +28,7 @@ where
     total_cost: OrderedFloat<f64>,
     heuristic: OrderedFloat<f64>,
     depth: usize,
+    dead: RefCell<bool>,
 }
 
 impl<State, Action> Node<State, Action>
@@ -54,6 +57,7 @@ where
             total_cost: total_cost,
             depth: depth,
             heuristic: h.into(),
+            dead: false.into(),
         }
     }
 
@@ -93,5 +97,26 @@ where
 
     pub fn get_depth(&self) -> usize {
         self.depth
+    }
+
+    pub fn mark_dead(&self) {
+        *self.dead.borrow_mut() = true;
+    }
+
+    pub fn is_dead(&self) -> bool {
+        *self.dead.borrow()
+    }
+}
+
+impl<State, Action> std::hash::Hash for Node<State, Action>
+where
+    State: WorldState<Action>,
+    Action: Clone,
+{
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.state.hash(state);
+        self.total_cost.hash(state);
+        self.heuristic.hash(state);
+        self.depth.hash(state);
     }
 }

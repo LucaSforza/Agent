@@ -15,7 +15,6 @@ where
 {
     fn enqueue(&mut self, item: Rc<Node<State, Action>>);
     fn dequeue(&mut self) -> Option<Rc<Node<State, Action>>>;
-    fn delete(&mut self, state: &State) -> bool;
     fn reset(&mut self);
 }
 
@@ -45,18 +44,18 @@ where
     // TODO: change bool into an enum
     // TODO: change if the cost is less than the actual node
     pub fn enqueue_or_replace(&mut self, item: Node<State, Action>) -> bool {
-        let mut to_remove = None;
+        let mut to_remove: Option<&State> = None;
         if let Some(old_node) = self.get_node.get(item.get_state()) {
             if old_node.get_g_cost() > item.get_g_cost() {
-                to_remove = old_node.get_state().clone().into();
+                to_remove = old_node.get_state().into();
+                old_node.mark_dead();
             } else {
                 return false;
             }
         }
 
         if let Some(to_remove) = to_remove {
-            self.collection.delete(&to_remove);
-            self.get_node.remove(&to_remove);
+            self.get_node.remove(&to_remove.clone());
         }
 
         let state = item.get_state().clone();
@@ -68,7 +67,10 @@ where
     }
 
     pub fn dequeue(&mut self) -> Option<Rc<Node<State, Action>>> {
-        let result = self.collection.dequeue();
+        let mut result = self.collection.dequeue();
+        while result.clone().map_or(false, |n| n.is_dead()) {
+            result = self.collection.dequeue()
+        }
         if result.is_some() {
             let node = result.clone().unwrap();
             self.get_node.remove(node.get_state());
@@ -101,20 +103,6 @@ where
         self.push_back(item);
     }
 
-    fn delete(&mut self, state: &State) -> bool {
-        let mut index = None;
-        for (i, node) in self.iter().enumerate() {
-            if node.get_state() == state {
-                index = i.into()
-            }
-        }
-        if let Some(i) = index {
-            self.remove(i);
-            return true;
-        }
-        return false;
-    }
-
     fn reset(&mut self) {
         self.clear();
     }
@@ -135,24 +123,11 @@ where
         self.pop()
     }
 
-    fn delete(&mut self, state: &State) -> bool {
-        let mut index = None;
-        for (i, node) in self.iter().enumerate() {
-            if node.get_state() == state {
-                index = i.into()
-            }
-        }
-        if let Some(i) = index {
-            self.remove(i);
-            return true;
-        }
-        return false;
-    }
-
     fn reset(&mut self) {
         self.clear();
     }
 }
+
 use ordered_float::OrderedFloat;
 use priority_queue::PriorityQueue;
 
@@ -204,28 +179,11 @@ macro_rules! create_backend {
         {
             fn enqueue(&mut self, item: Rc<Node<State, Action>>) {
                 let cost = item.$cost_fn();
-                self.push(item, Reverse(OrderedFloat::from(cost)));
+                self.push(item, Reverse(cost));
             }
 
             fn dequeue(&mut self) -> Option<Rc<Node<State, Action>>> {
                 self.pop().map(|(node, _)| node)
-            }
-
-            fn delete(&mut self, state: &State) -> bool {
-                let to_remove = self.iter().find_map(|(node, _)| {
-                    if node.get_state() == state {
-                        Some(node.clone())
-                    } else {
-                        None
-                    }
-                });
-
-                if let Some(node) = to_remove {
-                    self.remove(&node);
-                    true
-                } else {
-                    false
-                }
             }
 
             fn reset(&mut self) {
