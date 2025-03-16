@@ -4,7 +4,7 @@ mod tests {
 
     use agent::agent::WorldState;
     use agent::explorer::{
-        AStarExplore, BFSExplorer, BestFirstGreedyExplorer, DFSExplorer, MinCostExplorer,
+        AStarExplorer, BFSExplorer, BestFirstGreedyExplorer, DFSExplorer, MinCostExplorer,
     };
     // use frontier::DequeFrontier;
 
@@ -521,7 +521,7 @@ mod tests {
         ];
 
         let init_state = HouseState::with_dirty(3, 4, 5, 5, pos);
-        let mut explorer = AStarExplore::<HouseState, Action>::new();
+        let mut explorer = AStarExplorer::<HouseState, Action>::new();
         let sresult = explorer.search(init_state);
         assert!(sresult.actions.is_some());
         let actions = sresult.actions.clone().unwrap();

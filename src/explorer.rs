@@ -210,4 +210,4 @@ pub type DFSExplorer<State, Action> = Explorer<State, Action, StackBackend<State
 pub type MinCostExplorer<State, Action> = Explorer<State, Action, MinGBackend<State, Action>>;
 pub type BestFirstGreedyExplorer<State, Action> =
     Explorer<State, Action, MinHBackend<State, Action>>;
-pub type AStarExplore<State, Action> = Explorer<State, Action, MinFBackend<State, Action>>;
+pub type AStarExplorer<State, Action> = Explorer<State, Action, MinFBackend<State, Action>>;
