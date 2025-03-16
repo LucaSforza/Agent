@@ -143,8 +143,8 @@ mod tests {
             let mut pos: &Pos = &self.pos;
             for dirty_pos in self.where_dirty.iter() {
                 result += ((dirty_pos.x as isize - pos.x as isize).abs()
-                    + (dirty_pos.y as isize - pos.y as isize).abs())
-                    as f64;
+                    + (dirty_pos.y as isize - pos.y as isize).abs()
+                    + 1) as f64;
                 pos = dirty_pos;
             }
             return result;
@@ -491,9 +491,6 @@ mod tests {
 
         let expected_result = vec![
             Action::Suck,
-            Action::Right,
-            Action::Suck,
-            Action::Left,
             Action::Up,
             Action::Suck,
             Action::Left,
@@ -508,15 +505,18 @@ mod tests {
             Action::Right,
             Action::Suck,
             Action::Right,
+            Action::Suck,
             Action::Up,
+            Action::Suck,
+            Action::Right,
+            Action::Down,
             Action::Suck,
             Action::Down,
             Action::Suck,
             Action::Right,
             Action::Suck,
             Action::Down,
-            Action::Suck,
-            Action::Right,
+            Action::Down,
             Action::Suck,
         ];
 
