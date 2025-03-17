@@ -18,7 +18,6 @@ where
     Action: Clone,
 {
     actions: Option<Vec<Action>>,
-    n_iter: usize,
     max_frontier_size: usize,
 }
 
@@ -26,18 +25,16 @@ impl<Action> InnerResult<Action>
 where
     Action: Clone,
 {
-    fn found(actions: Vec<Action>, n_iter: usize, max_frontier_size: usize) -> Self {
+    fn found(actions: Vec<Action>, max_frontier_size: usize) -> Self {
         Self {
             actions: actions.into(),
-            n_iter: n_iter,
             max_frontier_size: max_frontier_size,
         }
     }
 
-    fn not_found(n_iter: usize, max_frontier_size: usize) -> Self {
+    fn not_found(max_frontier_size: usize) -> Self {
         Self {
             actions: None,
-            n_iter: n_iter,
             max_frontier_size: max_frontier_size,
         }
     }
@@ -66,11 +63,11 @@ where
         }
     }
 
-    fn from_inner_result(start: Instant, inner_result: InnerResult<Action>) -> Self {
+    fn from_inner_result(start: Instant, n_iter: usize, inner_result: InnerResult<Action>) -> Self {
         Self {
             total_time: start.elapsed(),
             actions: inner_result.actions,
-            n_iter: inner_result.n_iter,
+            n_iter: n_iter,
             max_frontier_size: inner_result.max_frontier_size,
         }
     }
@@ -145,17 +142,19 @@ where
         let mut lim = 1;
         let mut result: SearchResult<Action> = SearchResult::new();
         let start = Instant::now();
+        let mut n_iter = 0;
         loop {
             if max_limit < lim {
+                result.n_iter = n_iter;
                 result.total_time = start.elapsed();
                 return result;
             }
-            let inner_result = self.inner_search(init_state.clone(), lim.into());
-            result.n_iter += inner_result.n_iter;
+            let inner_result = self.inner_search(&mut n_iter, init_state.clone(), lim.into());
             if result.max_frontier_size < inner_result.max_frontier_size {
                 result.max_frontier_size = inner_result.max_frontier_size
             }
             if inner_result.actions.is_some() {
+                result.n_iter = n_iter;
                 result.total_time = start.elapsed();
                 result.actions = inner_result.actions;
                 return result;
@@ -170,38 +169,42 @@ where
         max_depth: usize,
     ) -> SearchResult<Action> {
         let start = Instant::now();
-        let result = self.inner_search(init_state, max_depth.into());
-        SearchResult::from_inner_result(start, result)
+        let mut n_iter = 0;
+        let result = self.inner_search(&mut n_iter, init_state, max_depth.into());
+        SearchResult::from_inner_result(start, n_iter, result)
     }
 
     pub fn search(&mut self, init_state: State) -> SearchResult<Action> {
         let start = Instant::now();
-        let result = self.inner_search(init_state, None);
-        SearchResult::from_inner_result(start, result)
+        let mut n_iter = 0;
+        let result = self.inner_search(&mut n_iter, init_state, None);
+        SearchResult::from_inner_result(start, n_iter, result)
     }
 
-    fn inner_search(&mut self, init_state: State, lim: Option<usize>) -> InnerResult<Action> {
+    fn inner_search(
+        &mut self,
+        n_iter: &mut usize,
+        init_state: State,
+        lim: Option<usize>,
+    ) -> InnerResult<Action> {
         self.frontier.reset();
         self.explored.clear();
         self.frontier
             .enqueue_or_replace(Node::new(None, init_state, None, 0.0));
 
-        let mut n_iter = 0;
+        //let mut n_iter = 0;
         let result: InnerResult<Action>;
 
         let mut max_frontier_size = 0;
-        self.eprint_status(n_iter);
+        self.eprint_status(*n_iter);
         while let Some(curr_node) = self.frontier.dequeue() {
-            n_iter += 1;
+            *n_iter += 1;
 
             let curr_state = curr_node.get_state();
 
             if curr_state.is_goal() {
-                result = InnerResult::<Action>::found(
-                    curr_node.get_plan().into(),
-                    n_iter,
-                    max_frontier_size,
-                );
+                result =
+                    InnerResult::<Action>::found(curr_node.get_plan().into(), max_frontier_size);
                 return result;
             } else {
                 let depth = curr_node.get_depth();
@@ -224,18 +227,16 @@ where
             if max_frontier_size < self.frontier.size() {
                 max_frontier_size = self.frontier.size();
             }
-            self.eprint_status(n_iter);
+            self.eprint_status(*n_iter);
         }
-        result = InnerResult::<Action>::not_found(n_iter, max_frontier_size);
+        result = InnerResult::<Action>::not_found(max_frontier_size);
         return result;
     }
 
     fn eprint_status(&self, n_iter: usize) {
         if self.verbosity == Verbosity::Low {
-            eprintln!(
-                "iter: {} Frontier: {:?} Explored: {:?}",
-                n_iter, self.frontier, self.explored
-            )
+            eprintln!("iter: {} Frontier: {:?}", n_iter + 1, self.frontier,);
+            eprintln!("iter: {} Explored: {:?}", n_iter + 1, self.explored,)
         }
     }
 }

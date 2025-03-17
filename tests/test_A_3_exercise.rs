@@ -1,5 +1,7 @@
 #[cfg(test)]
 mod tests {
+    use std::fmt::Debug;
+
     use agent::{
         agent::WorldState,
         explorer::{
@@ -22,7 +24,7 @@ mod tests {
         }
     }
 
-    #[derive(Hash, PartialEq, Eq, Clone, Copy, Debug)]
+    #[derive(Hash, PartialEq, Eq, Clone, Copy)]
     struct State<'a> {
         name: &'a str,
     }
@@ -30,6 +32,12 @@ mod tests {
     impl<'a> State<'a> {
         fn new(name: &'a str) -> Self {
             Self { name: name }
+        }
+    }
+
+    impl Debug for State<'_> {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(f, "{}", self.name)
         }
     }
 
@@ -45,14 +53,14 @@ mod tests {
                     result.push(Action::new("G1", 9.0));
                 }
                 "C" => {
-                    result.push(Action::new("S", 1.0));
-                    result.push(Action::new("J", 5.0));
                     result.push(Action::new("F", 2.0));
+                    result.push(Action::new("J", 5.0));
+                    result.push(Action::new("S", 1.0));
                 }
                 "D" => {
-                    result.push(Action::new("S", 8.0));
                     result.push(Action::new("C", 3.0));
                     result.push(Action::new("E", 3.0));
+                    result.push(Action::new("S", 8.0));
                 }
                 "E" => {
                     result.push(Action::new("G2", 7.0));

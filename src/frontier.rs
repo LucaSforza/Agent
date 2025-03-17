@@ -145,7 +145,6 @@ use priority_queue::PriorityQueue;
 
 macro_rules! create_backend {
     ($name:ident, $cost_fn:ident) => {
-        #[derive(Debug)]
         pub struct $name<State, Action>(
             PriorityQueue<Rc<Node<State, Action>>, Reverse<OrderedFloat<f64>>>,
         )
@@ -201,6 +200,19 @@ macro_rules! create_backend {
 
             fn reset(&mut self) {
                 self.clear();
+            }
+        }
+
+        impl<State, Action> Debug for $name<State, Action>
+        where
+            State: WorldState<Action> + Debug,
+            Action: Clone + Hash + Eq,
+        {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                for (node, _) in self.iter() {
+                    write!(f, "{:?}", node)?;
+                }
+                Ok(())
             }
         }
     };

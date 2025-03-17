@@ -111,16 +111,25 @@ where
 
 impl<State, Action> Debug for Node<State, Action>
 where
-    State: WorldState<Action>,
+    State: WorldState<Action> + Debug,
     Action: Clone,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Node")
-            .field("state", &self.state)
-            .field("total_cost", &self.total_cost)
-            .field("heuristic", &self.heuristic)
-            .field("depth", &self.depth)
-            .finish()
+        write!(
+            f,
+            "{{ s: {:?}, g: {}, h:{}, f:{}}}",
+            self.state,
+            self.total_cost,
+            self.heuristic,
+            self.get_f_cost()
+        )
+
+        /* f.debug_struct("Node")
+        .field("state", &self.state)
+        .field("total_cost", &self.total_cost)
+        .field("heuristic", &self.heuristic)
+        .field("depth", &self.depth)
+        .finish() */
     }
 }
 
