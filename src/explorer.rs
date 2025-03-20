@@ -8,7 +8,7 @@ use std::{
 use crate::{
     agent::{Node, WorldState},
     frontier::{
-        DequeBackend, Frontier, FrontierBackend, MinFBackend, MinGBackend, MinHBackend,
+        AStarBackend, BestFirstBackend, DequeBackend, Frontier, FrontierBackend, MinCostBackend,
         StackBackend,
     },
 };
@@ -243,7 +243,7 @@ where
 
 pub type BFSExplorer<State, Action> = Explorer<State, Action, DequeBackend<State, Action>>;
 pub type DFSExplorer<State, Action> = Explorer<State, Action, StackBackend<State, Action>>;
-pub type MinCostExplorer<State, Action> = Explorer<State, Action, MinGBackend<State, Action>>;
+pub type MinCostExplorer<State, Action> = Explorer<State, Action, MinCostBackend<State, Action>>;
 pub type BestFirstGreedyExplorer<State, Action> =
-    Explorer<State, Action, MinHBackend<State, Action>>;
-pub type AStarExplorer<State, Action> = Explorer<State, Action, MinFBackend<State, Action>>;
+    Explorer<State, Action, BestFirstBackend<State, Action>>;
+pub type AStarExplorer<State, Action> = Explorer<State, Action, AStarBackend<State, Action>>;

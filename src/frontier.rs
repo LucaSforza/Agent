@@ -3,7 +3,7 @@ use std::{
     collections::{HashMap, VecDeque},
     fmt::Debug,
     hash::Hash,
-    ops::{Deref, DerefMut},
+    marker::PhantomData,
     rc::Rc,
 };
 
@@ -143,82 +143,112 @@ where
 use ordered_float::OrderedFloat;
 use priority_queue::PriorityQueue;
 
-macro_rules! create_backend {
-    ($name:ident, $cost_fn:ident) => {
-        pub struct $name<State, Action>(
-            PriorityQueue<Rc<Node<State, Action>>, Reverse<OrderedFloat<f64>>>,
-        )
-        where
-            State: WorldState<Action>,
-            Action: Clone;
+pub trait NodeCost<State, Action>
+where
+    State: WorldState<Action>,
+    Action: Clone,
+{
+    fn cost(node: &Node<State, Action>) -> OrderedFloat<f64>;
+}
 
-        impl<State, Action> Deref for $name<State, Action>
-        where
-            State: WorldState<Action>,
-            Action: Clone,
-        {
-            type Target = PriorityQueue<Rc<Node<State, Action>>, Reverse<OrderedFloat<f64>>>;
+pub struct AStarPolicy {}
 
-            fn deref(&self) -> &Self::Target {
-                &self.0
-            }
+impl<State, Action> NodeCost<State, Action> for AStarPolicy
+where
+    State: WorldState<Action>,
+    Action: Clone,
+{
+    fn cost(node: &Node<State, Action>) -> OrderedFloat<f64> {
+        node.get_f_cost()
+    }
+}
+
+pub struct BestFirstPolicy {}
+
+impl<State, Action> NodeCost<State, Action> for BestFirstPolicy
+where
+    State: WorldState<Action>,
+    Action: Clone,
+{
+    fn cost(node: &Node<State, Action>) -> OrderedFloat<f64> {
+        node.get_h_cost()
+    }
+}
+
+pub struct MinCostPolicy {}
+
+impl<State, Action> NodeCost<State, Action> for MinCostPolicy
+where
+    State: WorldState<Action>,
+    Action: Clone,
+{
+    fn cost(node: &Node<State, Action>) -> OrderedFloat<f64> {
+        node.get_g_cost()
+    }
+}
+
+pub struct PriorityBackend<State, Action, Policy>
+where
+    State: WorldState<Action>,
+    Action: Clone,
+    Policy: NodeCost<State, Action>,
+{
+    collection: PriorityQueue<Rc<Node<State, Action>>, Reverse<OrderedFloat<f64>>>,
+    policy: PhantomData<Policy>,
+}
+
+impl<State, Action, Policy> Default for PriorityBackend<State, Action, Policy>
+where
+    State: WorldState<Action>,
+    Action: Clone + Hash + Eq,
+    Policy: NodeCost<State, Action>,
+{
+    fn default() -> Self {
+        Self {
+            collection: Default::default(),
+            policy: PhantomData,
         }
+    }
+}
 
-        impl<State, Action> DerefMut for $name<State, Action>
-        where
-            State: WorldState<Action>,
-            Action: Clone,
-        {
-            fn deref_mut(&mut self) -> &mut Self::Target {
-                &mut self.0
-            }
+impl<State, Action, Policy> FrontierBackend<State, Action>
+    for PriorityBackend<State, Action, Policy>
+where
+    State: WorldState<Action>,
+    Action: Clone + Hash + Eq,
+    Policy: NodeCost<State, Action>,
+{
+    fn enqueue(&mut self, item: Rc<Node<State, Action>>) {
+        let cost = Policy::cost(item.as_ref());
+        self.collection.push(item, Reverse(cost));
+    }
+
+    fn dequeue(&mut self) -> Option<Rc<Node<State, Action>>> {
+        self.collection.pop().map(|(x, _)| x)
+    }
+
+    fn reset(&mut self) {
+        self.collection.clear()
+    }
+}
+
+impl<State, Action, Policy> Debug for PriorityBackend<State, Action, Policy>
+where
+    State: WorldState<Action>,
+    Action: Clone,
+    Policy: NodeCost<State, Action>,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{{")?;
+        for item in self.collection.iter() {
+            item.fmt(f)?;
+            write!(f, ",")?;
         }
-
-        impl<State, Action> Default for $name<State, Action>
-        where
-            State: WorldState<Action>,
-            Action: Clone + Hash + Eq,
-        {
-            fn default() -> Self {
-                Self(Default::default())
-            }
-        }
-
-        impl<State, Action> FrontierBackend<State, Action> for $name<State, Action>
-        where
-            State: WorldState<Action>,
-            Action: Clone + Hash + Eq,
-        {
-            fn enqueue(&mut self, item: Rc<Node<State, Action>>) {
-                let cost = item.$cost_fn();
-                self.push(item, Reverse(cost));
-            }
-
-            fn dequeue(&mut self) -> Option<Rc<Node<State, Action>>> {
-                self.pop().map(|(node, _)| node)
-            }
-
-            fn reset(&mut self) {
-                self.clear();
-            }
-        }
-
-        impl<State, Action> Debug for $name<State, Action>
-        where
-            State: WorldState<Action> + Debug,
-            Action: Clone + Hash + Eq,
-        {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                for (node, _) in self.iter() {
-                    write!(f, "{:?}", node)?;
-                }
-                Ok(())
-            }
-        }
-    };
+        write!(f, "}}")
+    }
 }
 
 // Genera le strutture specifiche utilizzando la macro
-create_backend!(MinGBackend, get_g_cost);
-create_backend!(MinHBackend, get_h_cost);
-create_backend!(MinFBackend, get_f_cost);
+pub type MinCostBackend<State, Action> = PriorityBackend<State, Action, MinCostPolicy>;
+pub type BestFirstBackend<State, Action> = PriorityBackend<State, Action, BestFirstPolicy>;
+pub type AStarBackend<State, Action> = PriorityBackend<State, Action, AStarPolicy>;
