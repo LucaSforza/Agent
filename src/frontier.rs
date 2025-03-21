@@ -134,14 +134,13 @@ where
     }
 }
 
-use ordered_float::OrderedFloat;
 use priority_queue::PriorityQueue;
 
 pub trait NodeCost<P>
 where
     P: StateExplorerProblem,
 {
-    fn cost(node: &Node<P>) -> OrderedFloat<f64>;
+    fn cost(node: &Node<P>) -> P::Cost;
 }
 
 pub struct AStarPolicy {}
@@ -150,7 +149,7 @@ impl<P> NodeCost<P> for AStarPolicy
 where
     P: StateExplorerProblem<Action: Clone>,
 {
-    fn cost(node: &Node<P>) -> OrderedFloat<f64> {
+    fn cost(node: &Node<P>) -> P::Cost {
         node.get_f_cost()
     }
 }
@@ -161,7 +160,7 @@ impl<P> NodeCost<P> for BestFirstPolicy
 where
     P: StateExplorerProblem<Action: Clone>,
 {
-    fn cost(node: &Node<P>) -> OrderedFloat<f64> {
+    fn cost(node: &Node<P>) -> P::Cost {
         node.get_h_cost()
     }
 }
@@ -172,7 +171,7 @@ impl<P> NodeCost<P> for MinCostPolicy
 where
     P: StateExplorerProblem<Action: Clone>,
 {
-    fn cost(node: &Node<P>) -> OrderedFloat<f64> {
+    fn cost(node: &Node<P>) -> P::Cost {
         node.get_g_cost()
     }
 }
@@ -182,13 +181,13 @@ where
     P: StateExplorerProblem<Action: Clone>,
     Policy: NodeCost<P>,
 {
-    collection: PriorityQueue<Rc<Node<P>>, Reverse<OrderedFloat<f64>>>,
+    collection: PriorityQueue<Rc<Node<P>>, Reverse<P::Cost>>,
     policy: PhantomData<Policy>,
 }
 
 impl<P, Policy> Default for PriorityBackend<P, Policy>
 where
-    P: StateExplorerProblem<State: Eq + Hash, Action: Eq + Clone> + Eq,
+    P: StateExplorerProblem<State: Eq + Hash, Action: Eq + Clone, Cost: Hash> + Eq,
     Policy: NodeCost<P>,
 {
     fn default() -> Self {
@@ -201,7 +200,7 @@ where
 
 impl<P, Policy> FrontierBackend<P> for PriorityBackend<P, Policy>
 where
-    P: StateExplorerProblem<State: Eq + Hash, Action: Eq + Clone> + Eq,
+    P: StateExplorerProblem<State: Eq + Hash, Action: Eq + Clone, Cost: Hash> + Eq,
     Policy: NodeCost<P>,
 {
     fn enqueue(&mut self, item: Rc<Node<P>>) {
@@ -220,7 +219,7 @@ where
 
 impl<P, Policy> Debug for PriorityBackend<P, Policy>
 where
-    P: StateExplorerProblem<State: Debug, Action: Clone>,
+    P: StateExplorerProblem<State: Debug, Action: Clone, Cost: Debug>,
     Policy: NodeCost<P>,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

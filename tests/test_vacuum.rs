@@ -96,6 +96,7 @@ mod tests {
     impl Problem for CleanProblem {
         type State = HouseState;
         type Action = Action;
+        type Cost = u64;
 
         fn executable_actions(&self, state: &Self::State) -> impl Iterator<Item = Self::Action> {
             let mut actions = Vec::with_capacity(6); // TODO: change this
@@ -120,7 +121,7 @@ mod tests {
             actions.into_iter()
         }
 
-        fn result(&self, state: &Self::State, action: &Self::Action) -> (Self::State, f64) {
+        fn result(&self, state: &Self::State, action: &Self::Action) -> (Self::State, u64) {
             let result_state = match action {
                 Action::Left => state.new_position(state.pos.x - 1, state.pos.y),
                 Action::Right => state.new_position(state.pos.x + 1, state.pos.y),
@@ -133,11 +134,11 @@ mod tests {
                 Action::Down => state.new_position(state.pos.x, state.pos.y + 1),
                 Action::Up => state.new_position(state.pos.x, state.pos.y - 1),
             };
-            (result_state, 1.0)
+            (result_state, 1)
         }
 
-        fn heuristic(&self, state: &Self::State) -> f64 {
-            state.where_dirty.len() as f64
+        fn heuristic(&self, state: &Self::State) -> u64 {
+            state.where_dirty.len() as u64
         }
     }
 

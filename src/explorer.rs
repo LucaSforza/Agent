@@ -192,8 +192,13 @@ where
     ) -> InnerResult<P::Action> {
         self.frontier.reset();
         self.explored.clear();
-        self.frontier
-            .enqueue_or_replace(Node::new(None, &self.problem, init_state, None, 0.0));
+        self.frontier.enqueue_or_replace(Node::new(
+            None,
+            &self.problem,
+            init_state,
+            None,
+            P::Cost::default(),
+        ));
 
         //let mut n_iter = 0;
         let result: InnerResult<P::Action>;

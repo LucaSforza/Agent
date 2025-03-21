@@ -2,23 +2,23 @@ use std::cell::RefCell;
 use std::clone::Clone;
 use std::fmt::Debug;
 use std::hash::Hash;
+use std::ops::Add;
 use std::rc::Rc;
 use std::vec::Vec;
 
 pub trait Problem {
     type State;
     type Action;
+    type Cost: Copy + Default + Eq + Ord + Add<Output = Self::Cost> + PartialOrd + PartialEq;
 
     fn executable_actions(&self, state: &Self::State) -> impl Iterator<Item = Self::Action>;
-    fn result(&self, state: &Self::State, action: &Self::Action) -> (Self::State, f64);
-    fn heuristic(&self, state: &Self::State) -> f64;
+    fn result(&self, state: &Self::State, action: &Self::Action) -> (Self::State, Self::Cost);
+    fn heuristic(&self, state: &Self::State) -> Self::Cost;
 }
 
 pub trait StateExplorerProblem: Problem {
     fn is_goal(&self, state: &Self::State) -> bool;
 }
-
-use ordered_float::OrderedFloat;
 
 #[derive(PartialEq, Eq)]
 pub struct Node<P>
@@ -28,8 +28,8 @@ where
     state: P::State,
     parent: Option<Rc<Node<P>>>,
     action: Option<P::Action>,
-    total_cost: OrderedFloat<f64>,
-    heuristic: OrderedFloat<f64>,
+    total_cost: P::Cost,
+    heuristic: P::Cost,
     depth: usize,
     dead: RefCell<bool>,
 }
@@ -43,13 +43,13 @@ where
         problem: &P,
         state: P::State,
         action: Option<P::Action>,
-        cost: f64,
+        cost: P::Cost,
     ) -> Self {
         assert!((parent.is_none() && action.is_none()) || (parent.is_some() && action.is_some()));
-        let mut total_cost: OrderedFloat<f64> = cost.into();
+        let mut total_cost = cost;
         let mut depth = 0;
         if let Some(parent_node) = parent.as_ref() {
-            total_cost += parent_node.total_cost;
+            total_cost = total_cost + parent_node.total_cost;
             depth = parent_node.depth + 1;
         }
         let h = problem.heuristic(&state);
@@ -83,15 +83,15 @@ where
         result
     }
 
-    pub fn get_g_cost(&self) -> OrderedFloat<f64> {
+    pub fn get_g_cost(&self) -> P::Cost {
         return self.total_cost;
     }
 
-    pub fn get_h_cost(&self) -> OrderedFloat<f64> {
+    pub fn get_h_cost(&self) -> P::Cost {
         return self.heuristic;
     }
 
-    pub fn get_f_cost(&self) -> OrderedFloat<f64> {
+    pub fn get_f_cost(&self) -> P::Cost {
         return self.total_cost + self.heuristic;
     }
 
@@ -114,12 +114,12 @@ where
 
 impl<P> Debug for Node<P>
 where
-    P: StateExplorerProblem<State: Debug, Action: Clone>,
+    P: StateExplorerProblem<State: Debug, Action: Clone, Cost: Debug>,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{{ s: {:?}, g: {}, h:{}, f:{}}}",
+            "{{ s: {:?}, g: {:?}, h:{:?}, f:{:?}}}",
             self.state,
             self.total_cost,
             self.heuristic,
@@ -137,7 +137,7 @@ where
 
 impl<P> std::hash::Hash for Node<P>
 where
-    P: StateExplorerProblem<State: Hash>,
+    P: StateExplorerProblem<State: Hash, Cost: Hash>,
 {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.state.hash(state);
