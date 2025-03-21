@@ -2,11 +2,12 @@ use core::fmt;
 use std::{
     collections::HashSet,
     fmt::Debug,
+    hash::Hash,
     time::{Duration, Instant},
 };
 
 use crate::{
-    agent::{Node, WorldState},
+    agent::{Node, StateExplorerProblem},
     frontier::{
         AStarBackend, BestFirstBackend, DequeBackend, Frontier, FrontierBackend, MinCostBackend,
         StackBackend,
@@ -93,41 +94,43 @@ pub enum Verbosity {
 }
 
 // TODO: add max depth for the nodes
-pub struct Explorer<State, Action, Backend>
+pub struct Explorer<P, Backend>
 where
-    State: WorldState<Action>,
-    Action: Clone,
-    Backend: FrontierBackend<State, Action> + Debug,
+    P: StateExplorerProblem,
+    Backend: FrontierBackend<P> + Debug,
 {
     verbosity: Verbosity,
-    explored: HashSet<State>,
-    frontier: Frontier<State, Action, Backend>,
+    problem: P,
+    explored: HashSet<P::State>,
+    frontier: Frontier<P, Backend>,
 }
 
-impl<State, Action, Backend> Explorer<State, Action, Backend>
+impl<P, Backend> Explorer<P, Backend>
 where
-    State: WorldState<Action>,
-    Action: Clone,
-    Backend: FrontierBackend<State, Action> + Debug,
+    P: StateExplorerProblem<State: Eq + Hash + Clone + Debug, Action: Clone>,
+    Backend: FrontierBackend<P> + Debug,
 {
-    pub fn with_verbosity(verbosity: Verbosity) -> Self {
+    pub fn with_verbosity(problem: P, verbosity: Verbosity) -> Self {
         Self {
+            problem: problem,
             verbosity: verbosity,
             explored: HashSet::new(),
             frontier: Frontier::new(),
         }
     }
 
-    pub fn with_low_v() -> Self {
+    pub fn with_low_v(problem: P) -> Self {
         Self {
+            problem: problem,
             verbosity: Verbosity::Low,
             explored: HashSet::new(),
             frontier: Frontier::new(),
         }
     }
 
-    pub fn new() -> Self {
+    pub fn new(problem: P) -> Self {
         Self {
+            problem: problem,
             verbosity: Verbosity::None,
             explored: HashSet::new(),
             frontier: Frontier::new(),
@@ -136,11 +139,11 @@ where
 
     pub fn iterative_search(
         &mut self,
-        init_state: State,
+        init_state: P::State,
         max_limit: usize,
-    ) -> SearchResult<Action> {
+    ) -> SearchResult<P::Action> {
         let mut lim = 1;
-        let mut result: SearchResult<Action> = SearchResult::new();
+        let mut result: SearchResult<P::Action> = SearchResult::new();
         let start = Instant::now();
         let mut n_iter = 0;
         loop {
@@ -165,16 +168,16 @@ where
 
     pub fn search_with_max_depth(
         &mut self,
-        init_state: State,
+        init_state: P::State,
         max_depth: usize,
-    ) -> SearchResult<Action> {
+    ) -> SearchResult<P::Action> {
         let start = Instant::now();
         let mut n_iter = 0;
         let result = self.inner_search(&mut n_iter, init_state, max_depth.into());
         SearchResult::from_inner_result(start, n_iter, result)
     }
 
-    pub fn search(&mut self, init_state: State) -> SearchResult<Action> {
+    pub fn search(&mut self, init_state: P::State) -> SearchResult<P::Action> {
         let start = Instant::now();
         let mut n_iter = 0;
         let result = self.inner_search(&mut n_iter, init_state, None);
@@ -184,16 +187,16 @@ where
     fn inner_search(
         &mut self,
         n_iter: &mut usize,
-        init_state: State,
+        init_state: P::State,
         lim: Option<usize>,
-    ) -> InnerResult<Action> {
+    ) -> InnerResult<P::Action> {
         self.frontier.reset();
         self.explored.clear();
         self.frontier
-            .enqueue_or_replace(Node::new(None, init_state, None, 0.0));
+            .enqueue_or_replace(Node::new(None, &self.problem, init_state, None, 0.0));
 
         //let mut n_iter = 0;
-        let result: InnerResult<Action>;
+        let result: InnerResult<P::Action>;
 
         let mut max_frontier_size = 0;
         self.eprint_status(*n_iter);
@@ -202,18 +205,19 @@ where
 
             let curr_state = curr_node.get_state();
 
-            if curr_state.is_goal() {
+            if self.problem.is_goal(&curr_state) {
                 result =
-                    InnerResult::<Action>::found(curr_node.get_plan().into(), max_frontier_size);
+                    InnerResult::<P::Action>::found(curr_node.get_plan().into(), max_frontier_size);
                 return result;
             } else {
                 let depth = curr_node.get_depth();
                 if lim.map_or(true, |x| x > depth) {
-                    for action in curr_state.executable_actions() {
-                        let (new_state, cost) = curr_state.result(&action);
+                    for action in self.problem.executable_actions(curr_state) {
+                        let (new_state, cost) = self.problem.result(curr_state, &action);
                         if !self.explored.contains(&new_state) {
                             let new_node = Node::new(
                                 Some(curr_node.clone()),
+                                &self.problem,
                                 new_state.clone(),
                                 Some(action),
                                 cost,
@@ -229,7 +233,7 @@ where
             }
             self.eprint_status(*n_iter);
         }
-        result = InnerResult::<Action>::not_found(max_frontier_size);
+        result = InnerResult::<P::Action>::not_found(max_frontier_size);
         return result;
     }
 
@@ -241,9 +245,8 @@ where
     }
 }
 
-pub type BFSExplorer<State, Action> = Explorer<State, Action, DequeBackend<State, Action>>;
-pub type DFSExplorer<State, Action> = Explorer<State, Action, StackBackend<State, Action>>;
-pub type MinCostExplorer<State, Action> = Explorer<State, Action, MinCostBackend<State, Action>>;
-pub type BestFirstGreedyExplorer<State, Action> =
-    Explorer<State, Action, BestFirstBackend<State, Action>>;
-pub type AStarExplorer<State, Action> = Explorer<State, Action, AStarBackend<State, Action>>;
+pub type BFSExplorer<P> = Explorer<P, DequeBackend<P>>;
+pub type DFSExplorer<P> = Explorer<P, StackBackend<P>>;
+pub type MinCostExplorer<P> = Explorer<P, MinCostBackend<P>>;
+pub type BestFirstGreedyExplorer<P> = Explorer<P, BestFirstBackend<P>>;
+pub type AStarExplorer<P> = Explorer<P, AStarBackend<P>>;

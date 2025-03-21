@@ -2,9 +2,11 @@
 mod tests {
     use std::rc::Rc;
 
-    use agent::agent::WorldState;
-    use agent::explorer::{
-        AStarExplorer, BFSExplorer, BestFirstGreedyExplorer, DFSExplorer, MinCostExplorer,
+    use agent::{
+        agent::{Problem, StateExplorerProblem},
+        explorer::{
+            AStarExplorer, BFSExplorer, BestFirstGreedyExplorer, DFSExplorer, MinCostExplorer,
+        },
     };
     // use frontier::DequeFrontier;
 
@@ -39,34 +41,20 @@ mod tests {
     #[derive(Clone, PartialEq, Eq, Hash, Debug)]
     struct HouseState {
         pos: Pos,
-        rows: usize,
-        cols: usize,
         where_dirty: Rc<Vec<Pos>>,
     }
 
     impl HouseState {
-        fn with_dirty(
-            x: usize,
-            y: usize,
-            cols_len: usize,
-            rows_len: usize,
-            where_dirty: Vec<Pos>,
-        ) -> Self {
-            assert!(x < cols_len && y < rows_len);
+        fn with_dirty(x: usize, y: usize, where_dirty: Vec<Pos>) -> Self {
             Self {
                 pos: Pos { x: x, y: y },
-                rows: rows_len,
-                cols: cols_len,
                 where_dirty: where_dirty.into(),
             }
         }
 
         fn new_position(&self, x: usize, y: usize) -> Self {
-            assert!(x < self.rows && y < self.cols);
             Self {
                 pos: Pos { x: x, y: y },
-                rows: self.rows,
-                cols: self.cols,
                 where_dirty: self.where_dirty.clone(),
             }
         }
@@ -74,8 +62,6 @@ mod tests {
         fn clean(&self, new_dirty: Vec<Pos>) -> Self {
             Self {
                 pos: self.pos.clone(),
-                rows: self.rows,
-                cols: self.rows,
                 where_dirty: new_dirty.into(),
             }
         }
@@ -92,64 +78,81 @@ mod tests {
         }
     }
 
-    impl WorldState<Action> for HouseState {
-        type Iter = std::vec::IntoIter<Action>;
+    #[derive(PartialEq, Eq)]
+    struct CleanProblem {
+        rows: usize,
+        cols: usize,
+    }
 
-        fn executable_actions(&self) -> Self::Iter {
+    impl CleanProblem {
+        fn new(rows: usize, cols: usize) -> Self {
+            Self {
+                rows: rows,
+                cols: cols,
+            }
+        }
+    }
+
+    impl Problem for CleanProblem {
+        type State = HouseState;
+        type Action = Action;
+
+        fn executable_actions(&self, state: &Self::State) -> impl Iterator<Item = Self::Action> {
             let mut actions = Vec::with_capacity(6); // TODO: change this
-            if self.is_goal() {
+            if self.is_goal(state) {
                 actions.push(Action::Nothing);
             }
-            if self.is_dirty() {
+            if state.is_dirty() {
                 actions.push(Action::Suck);
             }
-            if self.pos.x != 0 {
+            if state.pos.x != 0 {
                 actions.push(Action::Left);
             }
-            if self.pos.x < self.rows - 1 {
+            if state.pos.x < self.rows - 1 {
                 actions.push(Action::Right);
             }
-            if self.pos.y != 0 {
+            if state.pos.y != 0 {
                 actions.push(Action::Up);
             }
-            if self.pos.y < self.cols - 1 {
+            if state.pos.y < self.cols - 1 {
                 actions.push(Action::Down);
             }
             actions.into_iter()
         }
 
-        fn result(&self, action: &Action) -> (Self, f64) {
+        fn result(&self, state: &Self::State, action: &Self::Action) -> (Self::State, f64) {
             let result_state = match action {
-                Action::Left => self.new_position(self.pos.x - 1, self.pos.y),
-                Action::Right => self.new_position(self.pos.x + 1, self.pos.y),
+                Action::Left => state.new_position(state.pos.x - 1, state.pos.y),
+                Action::Right => state.new_position(state.pos.x + 1, state.pos.y),
                 Action::Suck => {
-                    let new_dirty = self.where_dirty.as_ref().clone();
-                    let new_dirty = new_dirty.into_iter().filter(|e| *e != self.pos).collect();
-                    self.clean(new_dirty)
+                    let new_dirty = state.where_dirty.as_ref().clone();
+                    let new_dirty = new_dirty.into_iter().filter(|e| *e != state.pos).collect();
+                    state.clean(new_dirty)
                 }
-                Action::Nothing => self.clone(),
-                Action::Down => self.new_position(self.pos.x, self.pos.y + 1),
-                Action::Up => self.new_position(self.pos.x, self.pos.y - 1),
+                Action::Nothing => state.clone(),
+                Action::Down => state.new_position(state.pos.x, state.pos.y + 1),
+                Action::Up => state.new_position(state.pos.x, state.pos.y - 1),
             };
             (result_state, 1.0)
         }
 
-        fn is_goal(&self) -> bool {
-            return self.where_dirty.is_empty();
+        fn heuristic(&self, state: &Self::State) -> f64 {
+            state.where_dirty.len() as f64
         }
+    }
 
-        fn heuristic(&self) -> f64 {
-            self.where_dirty.len() as f64
+    impl StateExplorerProblem for CleanProblem {
+        fn is_goal(&self, state: &Self::State) -> bool {
+            state.where_dirty.is_empty()
         }
     }
 
     #[test]
     fn test_vacuum_bfs() {
+        let problem = CleanProblem::new(32, 32);
         let init_state = HouseState::with_dirty(
             3,
             2,
-            32,
-            32,
             vec![
                 Pos::new(10, 15),
                 Pos::new(29, 14),
@@ -158,7 +161,7 @@ mod tests {
                 Pos::new(31, 31),
             ],
         );
-        let mut explorer = BFSExplorer::<HouseState, Action>::new();
+        let mut explorer = BFSExplorer::new(problem);
         let result = explorer.search(init_state);
         assert!(result.actions.is_some());
         let res = result.actions.unwrap();
@@ -170,8 +173,9 @@ mod tests {
 
     #[test]
     fn test_vacuum_bfs_clean() {
-        let init_state = HouseState::with_dirty(3, 2, 32, 32, vec![]);
-        let mut explorer = BFSExplorer::<HouseState, Action>::new();
+        let problem = CleanProblem::new(32, 32);
+        let init_state = HouseState::with_dirty(3, 2, vec![]);
+        let mut explorer = BFSExplorer::new(problem);
         let result = explorer.search(init_state);
         assert!(result.actions.is_some());
         let res = result.actions.unwrap();
@@ -183,12 +187,11 @@ mod tests {
 
     #[test]
     fn test_vacuum_dfs() {
-        let mut explorer = DFSExplorer::<HouseState, Action>::new();
+        let problem = CleanProblem::new(32, 32);
+        let mut explorer = DFSExplorer::new(problem);
         let init_state = HouseState::with_dirty(
             3,
             2,
-            32,
-            32,
             vec![
                 Pos::new(10, 15),
                 Pos::new(29, 14),
@@ -208,8 +211,9 @@ mod tests {
 
     #[test]
     fn test_vacuum_dfs_clean() {
-        let mut explorer = DFSExplorer::<HouseState, Action>::new();
-        let init_state = HouseState::with_dirty(3, 2, 32, 32, vec![]);
+        let problem = CleanProblem::new(32, 32);
+        let mut explorer = DFSExplorer::new(problem);
+        let init_state = HouseState::with_dirty(3, 2, vec![]);
         let result = explorer.search(init_state);
         assert!(result.actions.is_some());
         let res = result.actions.unwrap();
@@ -236,9 +240,9 @@ mod tests {
             Pos::new(4, 0),
             Pos::new(4, 2),
         ];
-
-        let init_state = HouseState::with_dirty(4, 3, 5, 5, pos);
-        let mut explorer = DFSExplorer::<HouseState, Action>::new();
+        let problem = CleanProblem::new(5, 5);
+        let init_state = HouseState::with_dirty(4, 3, pos);
+        let mut explorer = DFSExplorer::new(problem);
         let sresult = explorer.search(init_state);
         assert!(sresult.actions.is_some());
         // let actions = sresult.actions.clone().unwrap();
@@ -292,9 +296,9 @@ mod tests {
             Action::Right,
             Action::Suck,
         ];
-
-        let init_state = HouseState::with_dirty(3, 4, 5, 5, pos);
-        let mut explorer = BFSExplorer::<HouseState, Action>::new();
+        let problem = CleanProblem::new(5, 5);
+        let init_state = HouseState::with_dirty(3, 4, pos);
+        let mut explorer = BFSExplorer::new(problem);
         let sresult = explorer.search(init_state);
         assert!(sresult.actions.is_some());
         let actions = sresult.actions.clone().unwrap();
@@ -350,9 +354,9 @@ mod tests {
             Action::Right,
             Action::Suck,
         ];
-
-        let init_state = HouseState::with_dirty(3, 4, 5, 5, pos);
-        let mut explorer = MinCostExplorer::<HouseState, Action>::new();
+        let problem = CleanProblem::new(5, 5);
+        let init_state = HouseState::with_dirty(3, 4, pos);
+        let mut explorer = MinCostExplorer::new(problem);
         let sresult = explorer.search(init_state);
         assert!(sresult.actions.is_some());
         let actions = sresult.actions.clone().unwrap();
@@ -426,9 +430,9 @@ mod tests {
             Action::Down,
             Action::Suck,
         ];
-
-        let init_state = HouseState::with_dirty(3, 4, 5, 5, pos);
-        let mut explorer = DFSExplorer::<HouseState, Action>::new();
+        let problem = CleanProblem::new(5, 5);
+        let init_state = HouseState::with_dirty(3, 4, pos);
+        let mut explorer = DFSExplorer::new(problem);
         let sresult = explorer.iterative_search(init_state, 300);
         assert!(sresult.actions.is_some());
         let actions = sresult.actions.clone().unwrap();
@@ -453,9 +457,9 @@ mod tests {
             Pos::new(4, 2),
             Pos::new(4, 4),
         ];
-
-        let init_state = HouseState::with_dirty(3, 4, 5, 5, pos);
-        let mut explorer = BestFirstGreedyExplorer::<HouseState, Action>::new();
+        let problem = CleanProblem::new(5, 5);
+        let init_state = HouseState::with_dirty(3, 4, pos);
+        let mut explorer = BestFirstGreedyExplorer::new(problem);
         let sresult = explorer.search(init_state);
         assert!(sresult.actions.is_some());
         // let actions = sresult.actions.clone().unwrap();
@@ -511,9 +515,9 @@ mod tests {
             Action::Down,
             Action::Suck,
         ];
-
-        let init_state = HouseState::with_dirty(3, 4, 5, 5, pos);
-        let mut explorer = AStarExplorer::<HouseState, Action>::new();
+        let problem = CleanProblem::new(5, 5);
+        let init_state = HouseState::with_dirty(3, 4, pos);
+        let mut explorer = AStarExplorer::new(problem);
         let sresult = explorer.search(init_state);
         assert!(sresult.actions.is_some());
         let actions = sresult.actions.clone().unwrap();

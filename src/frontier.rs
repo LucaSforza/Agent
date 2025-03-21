@@ -7,33 +7,30 @@ use std::{
     rc::Rc,
 };
 
-use crate::agent::{Node, WorldState};
+use crate::agent::{Node, StateExplorerProblem};
 
-pub trait FrontierBackend<State, Action>: Default
+pub trait FrontierBackend<P>: Default
 where
-    State: WorldState<Action>,
-    Action: Clone,
+    P: StateExplorerProblem,
 {
-    fn enqueue(&mut self, item: Rc<Node<State, Action>>);
-    fn dequeue(&mut self) -> Option<Rc<Node<State, Action>>>;
+    fn enqueue(&mut self, item: Rc<Node<P>>);
+    fn dequeue(&mut self) -> Option<Rc<Node<P>>>;
     fn reset(&mut self);
 }
 
-pub struct Frontier<State, Action, Backend>
+pub struct Frontier<P, Backend>
 where
-    State: WorldState<Action>,
-    Action: Clone,
-    Backend: FrontierBackend<State, Action>,
+    P: StateExplorerProblem,
+    Backend: FrontierBackend<P>,
 {
     collection: Backend,
-    get_node: HashMap<State, Rc<Node<State, Action>>>,
+    get_node: HashMap<P::State, Rc<Node<P>>>,
 }
 
-impl<State, Action, Backend> Frontier<State, Action, Backend>
+impl<P, Backend> Frontier<P, Backend>
 where
-    State: WorldState<Action>,
-    Action: Clone,
-    Backend: FrontierBackend<State, Action>,
+    P: StateExplorerProblem<State: Eq + Hash + Clone, Action: Clone>,
+    Backend: FrontierBackend<P>,
 {
     pub fn new() -> Self {
         Self {
@@ -44,8 +41,8 @@ where
 
     // TODO: change bool into an enum
     // TODO: change if the cost is less than the actual node
-    pub fn enqueue_or_replace(&mut self, item: Node<State, Action>) -> bool {
-        let mut to_remove: Option<&State> = None;
+    pub fn enqueue_or_replace(&mut self, item: Node<P>) -> bool {
+        let mut to_remove: Option<&P::State> = None;
         if let Some(old_node) = self.get_node.get(item.get_state()) {
             if old_node.get_g_cost() > item.get_g_cost() {
                 to_remove = old_node.get_state().into();
@@ -67,7 +64,7 @@ where
         true
     }
 
-    pub fn dequeue(&mut self) -> Option<Rc<Node<State, Action>>> {
+    pub fn dequeue(&mut self) -> Option<Rc<Node<P>>> {
         let mut result = self.collection.dequeue();
         while result.clone().map_or(false, |n| n.is_dead()) {
             result = self.collection.dequeue()
@@ -89,29 +86,27 @@ where
     }
 }
 
-impl<State, Action, Backend> Debug for Frontier<State, Action, Backend>
+impl<P, Backend> Debug for Frontier<P, Backend>
 where
-    State: WorldState<Action>,
-    Action: Clone,
-    Backend: FrontierBackend<State, Action> + Debug,
+    P: StateExplorerProblem,
+    Backend: FrontierBackend<P> + Debug,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", self.collection)
     }
 }
 
-pub type DequeBackend<State, Action> = VecDeque<Rc<Node<State, Action>>>;
+pub type DequeBackend<P> = VecDeque<Rc<Node<P>>>;
 
-impl<State, Action> FrontierBackend<State, Action> for DequeBackend<State, Action>
+impl<P> FrontierBackend<P> for DequeBackend<P>
 where
-    State: WorldState<Action>,
-    Action: Clone,
+    P: StateExplorerProblem,
 {
-    fn dequeue(&mut self) -> Option<Rc<Node<State, Action>>> {
+    fn dequeue(&mut self) -> Option<Rc<Node<P>>> {
         self.pop_front()
     }
 
-    fn enqueue(&mut self, item: Rc<Node<State, Action>>) {
+    fn enqueue(&mut self, item: Rc<Node<P>>) {
         self.push_back(item);
     }
 
@@ -120,18 +115,17 @@ where
     }
 }
 
-pub type StackBackend<State, Action> = Vec<Rc<Node<State, Action>>>;
+pub type StackBackend<P> = Vec<Rc<Node<P>>>;
 
-impl<State, Action> FrontierBackend<State, Action> for StackBackend<State, Action>
+impl<P> FrontierBackend<P> for StackBackend<P>
 where
-    State: WorldState<Action>,
-    Action: Clone,
+    P: StateExplorerProblem,
 {
-    fn enqueue(&mut self, item: Rc<Node<State, Action>>) {
+    fn enqueue(&mut self, item: Rc<Node<P>>) {
         self.push(item);
     }
 
-    fn dequeue(&mut self) -> Option<Rc<Node<State, Action>>> {
+    fn dequeue(&mut self) -> Option<Rc<Node<P>>> {
         self.pop()
     }
 
@@ -143,65 +137,59 @@ where
 use ordered_float::OrderedFloat;
 use priority_queue::PriorityQueue;
 
-pub trait NodeCost<State, Action>
+pub trait NodeCost<P>
 where
-    State: WorldState<Action>,
-    Action: Clone,
+    P: StateExplorerProblem,
 {
-    fn cost(node: &Node<State, Action>) -> OrderedFloat<f64>;
+    fn cost(node: &Node<P>) -> OrderedFloat<f64>;
 }
 
 pub struct AStarPolicy {}
 
-impl<State, Action> NodeCost<State, Action> for AStarPolicy
+impl<P> NodeCost<P> for AStarPolicy
 where
-    State: WorldState<Action>,
-    Action: Clone,
+    P: StateExplorerProblem<Action: Clone>,
 {
-    fn cost(node: &Node<State, Action>) -> OrderedFloat<f64> {
+    fn cost(node: &Node<P>) -> OrderedFloat<f64> {
         node.get_f_cost()
     }
 }
 
 pub struct BestFirstPolicy {}
 
-impl<State, Action> NodeCost<State, Action> for BestFirstPolicy
+impl<P> NodeCost<P> for BestFirstPolicy
 where
-    State: WorldState<Action>,
-    Action: Clone,
+    P: StateExplorerProblem<Action: Clone>,
 {
-    fn cost(node: &Node<State, Action>) -> OrderedFloat<f64> {
+    fn cost(node: &Node<P>) -> OrderedFloat<f64> {
         node.get_h_cost()
     }
 }
 
 pub struct MinCostPolicy {}
 
-impl<State, Action> NodeCost<State, Action> for MinCostPolicy
+impl<P> NodeCost<P> for MinCostPolicy
 where
-    State: WorldState<Action>,
-    Action: Clone,
+    P: StateExplorerProblem<Action: Clone>,
 {
-    fn cost(node: &Node<State, Action>) -> OrderedFloat<f64> {
+    fn cost(node: &Node<P>) -> OrderedFloat<f64> {
         node.get_g_cost()
     }
 }
 
-pub struct PriorityBackend<State, Action, Policy>
+pub struct PriorityBackend<P, Policy>
 where
-    State: WorldState<Action>,
-    Action: Clone,
-    Policy: NodeCost<State, Action>,
+    P: StateExplorerProblem<Action: Clone>,
+    Policy: NodeCost<P>,
 {
-    collection: PriorityQueue<Rc<Node<State, Action>>, Reverse<OrderedFloat<f64>>>,
+    collection: PriorityQueue<Rc<Node<P>>, Reverse<OrderedFloat<f64>>>,
     policy: PhantomData<Policy>,
 }
 
-impl<State, Action, Policy> Default for PriorityBackend<State, Action, Policy>
+impl<P, Policy> Default for PriorityBackend<P, Policy>
 where
-    State: WorldState<Action>,
-    Action: Clone + Hash + Eq,
-    Policy: NodeCost<State, Action>,
+    P: StateExplorerProblem<State: Eq + Hash, Action: Eq + Clone> + Eq,
+    Policy: NodeCost<P>,
 {
     fn default() -> Self {
         Self {
@@ -211,19 +199,17 @@ where
     }
 }
 
-impl<State, Action, Policy> FrontierBackend<State, Action>
-    for PriorityBackend<State, Action, Policy>
+impl<P, Policy> FrontierBackend<P> for PriorityBackend<P, Policy>
 where
-    State: WorldState<Action>,
-    Action: Clone + Hash + Eq,
-    Policy: NodeCost<State, Action>,
+    P: StateExplorerProblem<State: Eq + Hash, Action: Eq + Clone> + Eq,
+    Policy: NodeCost<P>,
 {
-    fn enqueue(&mut self, item: Rc<Node<State, Action>>) {
+    fn enqueue(&mut self, item: Rc<Node<P>>) {
         let cost = Policy::cost(item.as_ref());
         self.collection.push(item, Reverse(cost));
     }
 
-    fn dequeue(&mut self) -> Option<Rc<Node<State, Action>>> {
+    fn dequeue(&mut self) -> Option<Rc<Node<P>>> {
         self.collection.pop().map(|(x, _)| x)
     }
 
@@ -232,11 +218,10 @@ where
     }
 }
 
-impl<State, Action, Policy> Debug for PriorityBackend<State, Action, Policy>
+impl<P, Policy> Debug for PriorityBackend<P, Policy>
 where
-    State: WorldState<Action>,
-    Action: Clone,
-    Policy: NodeCost<State, Action>,
+    P: StateExplorerProblem<State: Debug, Action: Clone>,
+    Policy: NodeCost<P>,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{{")?;
@@ -249,6 +234,6 @@ where
 }
 
 // Genera le strutture specifiche utilizzando la macro
-pub type MinCostBackend<State, Action> = PriorityBackend<State, Action, MinCostPolicy>;
-pub type BestFirstBackend<State, Action> = PriorityBackend<State, Action, BestFirstPolicy>;
-pub type AStarBackend<State, Action> = PriorityBackend<State, Action, AStarPolicy>;
+pub type MinCostBackend<P> = PriorityBackend<P, MinCostPolicy>;
+pub type BestFirstBackend<P> = PriorityBackend<P, BestFirstPolicy>;
+pub type AStarBackend<P> = PriorityBackend<P, AStarPolicy>;

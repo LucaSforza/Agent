@@ -5,41 +5,44 @@ use std::hash::Hash;
 use std::rc::Rc;
 use std::vec::Vec;
 
-pub trait WorldState<Action>: Clone + Eq + Hash + Debug {
-    type Iter: Iterator<Item = Action>;
+pub trait Problem {
+    type State;
+    type Action;
 
-    fn executable_actions(&self) -> Self::Iter;
-    fn result(&self, action: &Action) -> (Self, f64);
-    fn is_goal(&self) -> bool;
-    fn heuristic(&self) -> f64;
+    fn executable_actions(&self, state: &Self::State) -> impl Iterator<Item = Self::Action>;
+    fn result(&self, state: &Self::State, action: &Self::Action) -> (Self::State, f64);
+    fn heuristic(&self, state: &Self::State) -> f64;
+}
+
+pub trait StateExplorerProblem: Problem {
+    fn is_goal(&self, state: &Self::State) -> bool;
 }
 
 use ordered_float::OrderedFloat;
 
 #[derive(PartialEq, Eq)]
-pub struct Node<State, Action>
+pub struct Node<P>
 where
-    State: WorldState<Action>,
-    Action: Clone,
+    P: StateExplorerProblem,
 {
-    state: State,
-    parent: Option<Rc<Node<State, Action>>>,
-    action: Option<Action>,
+    state: P::State,
+    parent: Option<Rc<Node<P>>>,
+    action: Option<P::Action>,
     total_cost: OrderedFloat<f64>,
     heuristic: OrderedFloat<f64>,
     depth: usize,
     dead: RefCell<bool>,
 }
 
-impl<State, Action> Node<State, Action>
+impl<P> Node<P>
 where
-    State: WorldState<Action>,
-    Action: Clone,
+    P: StateExplorerProblem<Action: Clone>,
 {
     pub fn new(
-        parent: Option<Rc<Node<State, Action>>>,
-        state: State,
-        action: Option<Action>,
+        parent: Option<Rc<Node<P>>>,
+        problem: &P,
+        state: P::State,
+        action: Option<P::Action>,
         cost: f64,
     ) -> Self {
         assert!((parent.is_none() && action.is_none()) || (parent.is_some() && action.is_some()));
@@ -49,7 +52,7 @@ where
             total_cost += parent_node.total_cost;
             depth = parent_node.depth + 1;
         }
-        let h = state.heuristic();
+        let h = problem.heuristic(&state);
         Self {
             state: state,
             parent: parent,
@@ -61,13 +64,13 @@ where
         }
     }
 
-    pub fn get_plan(&self) -> Vec<Action> {
+    pub fn get_plan(&self) -> Vec<P::Action> {
         assert!(!self.is_dead());
-        let mut result: Vec<Action> = Vec::with_capacity(self.depth);
+        let mut result: Vec<P::Action> = Vec::with_capacity(self.depth);
 
         if self.action.is_some() {
             result.push(self.action.clone().unwrap());
-            let mut current_node: Option<Rc<Node<State, Action>>> = self.parent.clone();
+            let mut current_node: Option<Rc<Node<P>>> = self.parent.clone();
 
             while let Some(node) = current_node {
                 if let Some(action) = &node.action {
@@ -92,7 +95,7 @@ where
         return self.total_cost + self.heuristic;
     }
 
-    pub fn get_state(&self) -> &State {
+    pub fn get_state(&self) -> &P::State {
         &self.state
     }
 
@@ -109,10 +112,9 @@ where
     }
 }
 
-impl<State, Action> Debug for Node<State, Action>
+impl<P> Debug for Node<P>
 where
-    State: WorldState<Action> + Debug,
-    Action: Clone,
+    P: StateExplorerProblem<State: Debug, Action: Clone>,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
@@ -133,10 +135,9 @@ where
     }
 }
 
-impl<State, Action> std::hash::Hash for Node<State, Action>
+impl<P> std::hash::Hash for Node<P>
 where
-    State: WorldState<Action>,
-    Action: Clone,
+    P: StateExplorerProblem<State: Hash>,
 {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.state.hash(state);
