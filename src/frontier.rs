@@ -1,7 +1,7 @@
 use std::{
     cmp::Reverse,
-    collections::{HashMap, VecDeque},
-    fmt::Debug,
+    collections::{BinaryHeap, HashMap, VecDeque},
+    fmt::{Debug, Pointer},
     hash::Hash,
     marker::PhantomData,
     rc::Rc,
@@ -134,8 +134,6 @@ where
     }
 }
 
-use priority_queue::PriorityQueue;
-
 pub trait NodeCost<P>
 where
     P: StateExplorerProblem,
@@ -176,18 +174,69 @@ where
     }
 }
 
+pub struct NodeAndCost<P>(Rc<Node<P>>, Reverse<P::Cost>)
+where
+    P: StateExplorerProblem;
+
+impl<P> NodeAndCost<P>
+where
+    P: StateExplorerProblem,
+{
+    pub fn new(node: Rc<Node<P>>, cost: P::Cost) -> Self {
+        Self(node, Reverse(cost))
+    }
+}
+
+impl<P> Ord for NodeAndCost<P>
+where
+    P: StateExplorerProblem,
+{
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.1.cmp(&other.1)
+    }
+}
+
+impl<P> PartialOrd for NodeAndCost<P>
+where
+    P: StateExplorerProblem,
+{
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl<P> PartialEq for NodeAndCost<P>
+where
+    P: StateExplorerProblem,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.1 == other.1
+    }
+}
+
+impl<P> Eq for NodeAndCost<P> where P: StateExplorerProblem {}
+
+impl<P> Debug for NodeAndCost<P>
+where
+    P: StateExplorerProblem,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
 pub struct PriorityBackend<P, Policy>
 where
-    P: StateExplorerProblem<Action: Clone>,
+    P: StateExplorerProblem,
     Policy: NodeCost<P>,
 {
-    collection: PriorityQueue<Rc<Node<P>>, Reverse<P::Cost>>,
+    collection: BinaryHeap<NodeAndCost<P>>,
     policy: PhantomData<Policy>,
 }
 
 impl<P, Policy> Default for PriorityBackend<P, Policy>
 where
-    P: StateExplorerProblem<State: Eq + Hash, Action: Eq + Clone, Cost: Hash> + Eq,
+    P: StateExplorerProblem,
     Policy: NodeCost<P>,
 {
     fn default() -> Self {
@@ -200,16 +249,16 @@ where
 
 impl<P, Policy> FrontierBackend<P> for PriorityBackend<P, Policy>
 where
-    P: StateExplorerProblem<State: Eq + Hash, Action: Eq + Clone, Cost: Hash> + Eq,
+    P: StateExplorerProblem,
     Policy: NodeCost<P>,
 {
     fn enqueue(&mut self, item: Rc<Node<P>>) {
         let cost = Policy::cost(item.as_ref());
-        self.collection.push(item, Reverse(cost));
+        self.collection.push(NodeAndCost::new(item, cost));
     }
 
     fn dequeue(&mut self) -> Option<Rc<Node<P>>> {
-        self.collection.pop().map(|(x, _)| x)
+        self.collection.pop().map(|x| x.0)
     }
 
     fn reset(&mut self) {

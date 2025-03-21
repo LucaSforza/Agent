@@ -93,7 +93,6 @@ pub enum Verbosity {
     Low,
 }
 
-// TODO: add max depth for the nodes
 pub struct Explorer<P, Backend>
 where
     P: StateExplorerProblem,

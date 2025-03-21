@@ -6,8 +6,3 @@ edition = "2021"
 [lib]
 name = "agent"
 path= "src/lib.rs"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
-priority-queue = "2.2.2"
