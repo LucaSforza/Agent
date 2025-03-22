@@ -3,10 +3,10 @@ mod tests {
     use std::rc::Rc;
 
     use agent::{
-        agent::{Problem, StateExplorerProblem},
         explorer::{
             AStarExplorer, BFSExplorer, BestFirstGreedyExplorer, DFSExplorer, MinCostExplorer,
         },
+        problem::{Problem, StateExplorerProblem},
     };
     // use frontier::DequeFrontier;
 

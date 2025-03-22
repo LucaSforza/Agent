@@ -7,11 +7,12 @@ use std::{
 };
 
 use crate::{
-    agent::{Node, StateExplorerProblem},
+    explorer_node::Node,
     frontier::{
         AStarBackend, BestFirstBackend, DequeBackend, Frontier, FrontierBackend, MinCostBackend,
         StackBackend,
     },
+    problem::StateExplorerProblem,
 };
 
 struct InnerResult<Action>

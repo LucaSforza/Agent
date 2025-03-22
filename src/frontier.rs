@@ -7,7 +7,8 @@ use std::{
     rc::Rc,
 };
 
-use crate::agent::{Node, StateExplorerProblem};
+use crate::explorer_node::Node;
+use crate::problem::StateExplorerProblem;
 
 pub trait FrontierBackend<P>: Default
 where

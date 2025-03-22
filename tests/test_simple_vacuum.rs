@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests {
     use agent::{
-        agent::{Problem, StateExplorerProblem},
         explorer::{BFSExplorer, DFSExplorer},
+        problem::{Problem, StateExplorerProblem},
     };
     // use frontier::DequeFrontier;
 
