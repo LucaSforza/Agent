@@ -3,7 +3,6 @@ use std::fmt;
 use agent::iterative_improvement::{Resolver, SteepestDescend};
 use agent::problem::{IterativeImprovingProblem, Problem};
 use rand_distr::uniform::{UniformSampler, UniformUsize};
-use rand_distr::Uniform;
 
 enum Direction {
     Up,
@@ -159,10 +158,10 @@ fn main() {
     assert_eq!(7, c_1);
     assert_eq!(5, c_2);
 
-    let mut resolver = SteepestDescend::new(rand::rng());
-    let state = resolver.resolve(&problem);
-    println!("state:\n{:?}\ncost:{}", state, problem.heuristic(&state));
+    let mut resolver = Resolver::new(SteepestDescend::new(rand::rng()));
+    let result = resolver.resolve(&problem);
+    println!("{:?}", result);
 
-    let state = resolver.resolve_restart(&problem, 1000);
-    println!("state:\n{:?}\ncost:{}", state, problem.heuristic(&state))
+    let result = resolver.resolve_restart(&problem, 1000);
+    println!("{:?}", result);
 }
