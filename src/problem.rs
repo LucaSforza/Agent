@@ -1,5 +1,7 @@
 use std::ops::Add;
 
+use rand::Rng;
+
 pub trait Problem {
     type State;
     type Action;
@@ -12,4 +14,8 @@ pub trait Problem {
 
 pub trait StateExplorerProblem: Problem {
     fn is_goal(&self, state: &Self::State) -> bool;
+}
+
+pub trait IterativeImprovingProblem: Problem {
+    fn random_state<R: Rng + ?Sized>(&self, rng: &mut R) -> Self::State;
 }
