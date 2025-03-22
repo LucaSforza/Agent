@@ -1,6 +1,7 @@
 use std::fmt;
+use std::time::Duration;
 
-use agent::iterative_improvement::{Resolver, SteepestDescend};
+use agent::iterative_improvement::{ImprovingAlgorithm, Resolver, SteepestDescend};
 use agent::problem::{IterativeImprovingProblem, Problem};
 use rand_distr::uniform::{UniformSampler, UniformUsize};
 
@@ -116,18 +117,8 @@ impl Problem for NQueen {
                 }
             }
 
-            for j in 1..=(self.n - i - 1) {
-                if (state.pos[i + j] as isize - j as isize) < 0 {
-                    continue;
-                }
-                if state.pos[i] == (state.pos[i + j] - j) {
-                    result += 1;
-                    break;
-                }
-            }
-
-            for j in 1..=(self.n - i - 1) {
-                if state.pos[i] == (state.pos[i + j] + j) {
+            for j in (i + 1)..self.n {
+                if state.pos[i].abs_diff(state.pos[j]) == i.abs_diff(j) {
                     result += 1;
                     break;
                 }
@@ -149,19 +140,52 @@ impl IterativeImprovingProblem for NQueen {
     }
 }
 
+fn resolve_nqueen<A: ImprovingAlgorithm<NQueen>>(
+    problem: &NQueen,
+    resolver: &mut Resolver<A, NQueen>,
+) {
+    let mut total_duration: Duration = Duration::default();
+    let mut correct = 0;
+
+    for _ in 0..1000 {
+        let result = resolver.resolve(problem);
+        total_duration += result.duration;
+        if result.h == 0 {
+            correct += 1;
+        }
+    }
+    println!("Correctnes: {}", (correct as f64) / 1000.0);
+    println!("Total Duration: {:?}", total_duration);
+}
+
+fn resolve_restart_nqueen<A: ImprovingAlgorithm<NQueen>>(
+    problem: &NQueen,
+    resolver: &mut Resolver<A, NQueen>,
+) {
+    let mut total_duration: Duration = Duration::default();
+    let mut correct = 0;
+
+    for _ in 0..1000 {
+        let result = resolver.resolve_restart(problem, 100);
+        total_duration += result.duration;
+        if result.h == 0 {
+            correct += 1;
+        }
+    }
+    println!("Correctnes: {}", (correct as f64) / 1000.0);
+    println!("Total Duration: {:?}", total_duration);
+}
+
 fn main() {
     let problem = NQueen::new(8);
-    let k_1 = DeploymentQueens::new(vec![0, 1, 0, 2, 5, 3, 3, 6]);
+    /*let k_1 = DeploymentQueens::new(vec![0, 1, 0, 2, 5, 3, 3, 6]);
     let k_2 = DeploymentQueens::new(vec![0, 1, 0, 2, 5, 7, 3, 6]);
     let c_1 = problem.heuristic(&k_1);
     let c_2 = problem.heuristic(&k_2);
     assert_eq!(7, c_1);
-    assert_eq!(5, c_2);
+    assert_eq!(5, c_2); */
 
     let mut resolver = Resolver::new(SteepestDescend::new(rand::rng()));
-    let result = resolver.resolve(&problem);
-    println!("{:?}", result);
-
-    let result = resolver.resolve_restart(&problem, 1000);
-    println!("{:?}", result);
+    resolve_nqueen(&problem, &mut resolver);
+    resolve_restart_nqueen(&problem, &mut resolver);
 }

@@ -69,7 +69,7 @@ where
 pub struct Resolver<I, P>
 where
     P: IterativeImprovingProblem,
-    I: ImprovingAlgoritm<P>,
+    I: ImprovingAlgorithm<P>,
 {
     algo: I,
     _problem: PhantomData<P>,
@@ -78,7 +78,7 @@ where
 impl<I, P> Resolver<I, P>
 where
     P: IterativeImprovingProblem,
-    I: ImprovingAlgoritm<P>,
+    I: ImprovingAlgorithm<P>,
 {
     pub fn new(algo: I) -> Self {
         Self {
@@ -91,7 +91,7 @@ where
 impl<I, P> Resolver<I, P>
 where
     P: IterativeImprovingProblem,
-    I: ImprovingAlgoritm<P>,
+    I: ImprovingAlgorithm<P>,
 {
     pub fn resolve(&mut self, problem: &P) -> ResolverResult<P> {
         let start = Instant::now();
@@ -121,7 +121,7 @@ where
     }
 }
 
-pub trait ImprovingAlgoritm<P>
+pub trait ImprovingAlgorithm<P>
 where
     P: IterativeImprovingProblem,
 {
@@ -138,7 +138,7 @@ impl<R: Rng> SteepestDescend<R> {
     }
 }
 
-impl<R: Rng, P: IterativeImprovingProblem<State: Clone>> ImprovingAlgoritm<P>
+impl<R: Rng, P: IterativeImprovingProblem<State: Clone>> ImprovingAlgorithm<P>
     for SteepestDescend<R>
 {
     fn inner_resolve(&mut self, problem: &P) -> InnerResolverResult<P> {
