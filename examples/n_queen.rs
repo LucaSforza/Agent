@@ -147,60 +147,65 @@ impl IterativeImprovingProblem for NQueen {
 fn resolve_nqueen<A: ImprovingAlgorithm<NQueen>>(
     problem: &NQueen,
     resolver: &mut Resolver<A, NQueen>,
-) {
-    let mut total_duration: Duration = Duration::default();
-    let mut correct = 0;
-
-    for _ in 0..1000 {
-        let result = resolver.resolve(problem);
-        total_duration += result.duration;
-        if result.h <= 0.0.into() {
-            correct += 1;
-        }
-    }
-    println!("Correctnes: {}", (correct as f64) / 1000.0);
-    println!("Total Duration: {:?}", total_duration);
-}
-
-fn resolve_restart_nqueen<A: ImprovingAlgorithm<NQueen>>(
-    problem: &NQueen,
-    resolver: &mut Resolver<A, NQueen>,
     iterations: u32,
 ) {
     let mut total_duration: Duration = Duration::default();
     let mut correct = 0;
 
     for _ in 0..iterations {
-        let result = resolver.resolve_restart(problem, 100);
+        let result = resolver.resolve(problem);
         total_duration += result.duration;
         if result.h <= 0.0.into() {
             correct += 1;
         }
     }
-    println!("Correctness: {}", (correct as f64) / iterations as f64);
-    println!("Total Duration: {:?}", total_duration);
-    println!("Mean time: {:?}", total_duration / iterations);
+    println!("\tOne restart:");
+    println!("\t  Correctness: {}", (correct as f64) / iterations as f64);
+    println!("\t  Total Duration: {:?}", total_duration);
+    println!("\t  Mean time: {:?}", total_duration / iterations);
 }
 
-fn run_nqueen(n: usize, iterations: u32) {
+fn resolve_restart_nqueen<A: ImprovingAlgorithm<NQueen>>(
+    problem: &NQueen,
+    resolver: &mut Resolver<A, NQueen>,
+    iterations: u32,
+    n_restarts: usize,
+) {
+    let mut total_duration: Duration = Duration::default();
+    let mut correct = 0;
+
+    for _ in 0..iterations {
+        let result = resolver.resolve_restart(problem, n_restarts);
+        total_duration += result.duration;
+        if result.h <= 0.0.into() {
+            correct += 1;
+        }
+    }
+    println!("\tNumber restarts:{}", n_restarts);
+    println!("\t  Correctness: {}", (correct as f64) / iterations as f64);
+    println!("\t  Total Duration: {:?}", total_duration);
+    println!("\t  Mean time: {:?}", total_duration / iterations);
+}
+
+fn run_nqueen(n: usize, iterations: u32, restarts: usize) {
     let problem = NQueen::new(n);
 
     println!("Steepest Descend:");
     let mut resolver = Resolver::new(SteepestDescend::new(rand::rng()));
-    resolve_nqueen(&problem, &mut resolver);
-    resolve_restart_nqueen(&problem, &mut resolver, iterations);
+    resolve_nqueen(&problem, &mut resolver, iterations);
+    resolve_restart_nqueen(&problem, &mut resolver, iterations, restarts);
 
-    println!("Hill Climbing");
+    println!("Hill Climbing:");
     let mut resolver = Resolver::new(HillClimbing::with_max_lateral(rand::rng(), 100));
-    resolve_nqueen(&problem, &mut resolver);
-    resolve_restart_nqueen(&problem, &mut resolver, iterations);
+    resolve_nqueen(&problem, &mut resolver, iterations);
+    resolve_restart_nqueen(&problem, &mut resolver, iterations, restarts);
 
-    println!("Simulated Annealing");
-    let mut resolver = Resolver::new(SimulatedAnnealing::new(rand::rng(), 1000));
-    resolve_nqueen(&problem, &mut resolver);
-    resolve_restart_nqueen(&problem, &mut resolver, iterations);
+    println!("Simulated Annealing:");
+    let mut resolver = Resolver::new(SimulatedAnnealing::new(rand::rng()));
+    resolve_nqueen(&problem, &mut resolver, iterations);
+    resolve_restart_nqueen(&problem, &mut resolver, iterations, restarts);
 }
 
 fn main() {
-    run_nqueen(8, 250);
+    run_nqueen(8, 2500, 100);
 }

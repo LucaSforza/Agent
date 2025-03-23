@@ -17,7 +17,33 @@ Darà in output la percentuale (tra 0 e 1) delle volte in cui i vari algoritmi a
 Esempio output:
 
 ```
-
+Steepest Descend:
+        One restart:
+          Correctness: 0.004
+          Total Duration: 1.644453ms
+          Mean time: 6.577µs
+        Number restarts:100
+          Correctness: 0.304
+          Total Duration: 136.813983ms
+          Mean time: 547.255µs
+Hill Climbing:
+        One restart:
+          Correctness: 0.008
+          Total Duration: 12.513636ms
+          Mean time: 50.054µs
+        Number restarts:100
+          Correctness: 0.46
+          Total Duration: 911.79205ms
+          Mean time: 3.647168ms
+Simulated Annealing:
+        One restart:
+          Correctness: 0.06
+          Total Duration: 33.157589ms
+          Mean time: 132.63µs
+        Number restarts:100
+          Correctness: 0.992
+          Total Duration: 712.095673ms
+          Mean time: 2.848382ms
 ```
 
 Per maggiori dettagli degli output e dell'implementazione del problema e degli algoritmi

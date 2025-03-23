@@ -107,6 +107,7 @@ where
         for _ in 1..max_restarts {
             let new_result = self.algo.attempt(problem);
             if new_result.h <= P::Cost::default() {
+                // TODO: check if it is a goal state
                 result.state = new_result.state;
                 result.h = new_result.h;
                 result.iterations += new_result.iterations;
@@ -246,7 +247,6 @@ where
 pub struct SimulatedAnnealing<R: Rng> {
     rng: R,
     cooling: fn(usize) -> f64,
-    range: usize,
 }
 
 impl<R: Rng> SimulatedAnnealing<R> {
@@ -258,11 +258,10 @@ impl<R: Rng> SimulatedAnnealing<R> {
         }
     }
 
-    pub fn new(rng: R, range: usize) -> Self {
+    pub fn new(rng: R) -> Self {
         Self {
             rng: rng,
             cooling: Self::default_cooling,
-            range: range,
         }
     }
 
@@ -270,7 +269,6 @@ impl<R: Rng> SimulatedAnnealing<R> {
         Self {
             rng: rng,
             cooling: cooling,
-            range: 0,
         }
     }
 }
