@@ -46,7 +46,7 @@ where
             action: action,
             total_cost: total_cost,
             depth: depth,
-            heuristic: h.into(),
+            heuristic: h,
             dead: false.into(),
         }
     }

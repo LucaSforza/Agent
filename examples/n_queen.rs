@@ -1,7 +1,9 @@
 use std::fmt;
 use std::time::Duration;
 
-use agent::iterative_improvement::{ImprovingAlgorithm, Resolver, SteepestDescend};
+use agent::iterative_improvement::{
+    HillClimbing, ImprovingAlgorithm, Resolver, SimulatedAnnealing, SteepestDescend,
+};
 use agent::problem::{IterativeImprovingProblem, Problem};
 use rand_distr::uniform::{UniformSampler, UniformUsize};
 
@@ -81,10 +83,12 @@ impl NQueen {
     }
 }
 
+use ordered_float::OrderedFloat;
+
 impl Problem for NQueen {
     type State = DeploymentQueens;
     type Action = MoveQueen;
-    type Cost = u64;
+    type Cost = OrderedFloat<f64>;
 
     fn executable_actions(&self, state: &Self::State) -> impl Iterator<Item = Self::Action> {
         let mut actions = Vec::with_capacity(self.n * 2);
@@ -103,29 +107,29 @@ impl Problem for NQueen {
 
     fn result(&self, state: &Self::State, action: &Self::Action) -> (Self::State, Self::Cost) {
         let new_state = state.move_queen(self, action);
-        (new_state, 0)
+        (new_state, 0.into())
     }
 
     fn heuristic(&self, state: &Self::State) -> Self::Cost {
-        let mut result = 0;
+        let mut result = 0.0;
 
         for i in 0..self.n {
             for j in (i + 1)..self.n {
                 if state.pos[i] == state.pos[j] {
-                    result += 1;
-                    break;
+                    result += 1.0;
+                    // break;
                 }
             }
 
             for j in (i + 1)..self.n {
                 if state.pos[i].abs_diff(state.pos[j]) == i.abs_diff(j) {
-                    result += 1;
-                    break;
+                    result += 1.0;
+                    // break;
                 }
             }
         }
 
-        return result;
+        return result.into();
     }
 }
 
@@ -150,7 +154,7 @@ fn resolve_nqueen<A: ImprovingAlgorithm<NQueen>>(
     for _ in 0..1000 {
         let result = resolver.resolve(problem);
         total_duration += result.duration;
-        if result.h == 0 {
+        if result.h <= 0.0.into() {
             correct += 1;
         }
     }
@@ -161,31 +165,42 @@ fn resolve_nqueen<A: ImprovingAlgorithm<NQueen>>(
 fn resolve_restart_nqueen<A: ImprovingAlgorithm<NQueen>>(
     problem: &NQueen,
     resolver: &mut Resolver<A, NQueen>,
+    iterations: u32,
 ) {
     let mut total_duration: Duration = Duration::default();
     let mut correct = 0;
 
-    for _ in 0..1000 {
+    for _ in 0..iterations {
         let result = resolver.resolve_restart(problem, 100);
         total_duration += result.duration;
-        if result.h == 0 {
+        if result.h <= 0.0.into() {
             correct += 1;
         }
     }
-    println!("Correctnes: {}", (correct as f64) / 1000.0);
+    println!("Correctness: {}", (correct as f64) / iterations as f64);
     println!("Total Duration: {:?}", total_duration);
+    println!("Mean time: {:?}", total_duration / iterations);
+}
+
+fn run_nqueen(n: usize, iterations: u32) {
+    let problem = NQueen::new(n);
+
+    println!("Steepest Descend:");
+    let mut resolver = Resolver::new(SteepestDescend::new(rand::rng()));
+    resolve_nqueen(&problem, &mut resolver);
+    resolve_restart_nqueen(&problem, &mut resolver, iterations);
+
+    println!("Hill Climbing");
+    let mut resolver = Resolver::new(HillClimbing::with_max_lateral(rand::rng(), 100));
+    resolve_nqueen(&problem, &mut resolver);
+    resolve_restart_nqueen(&problem, &mut resolver, iterations);
+
+    println!("Simulated Annealing");
+    let mut resolver = Resolver::new(SimulatedAnnealing::new(rand::rng(), 1000));
+    resolve_nqueen(&problem, &mut resolver);
+    resolve_restart_nqueen(&problem, &mut resolver, iterations);
 }
 
 fn main() {
-    let problem = NQueen::new(8);
-    /*let k_1 = DeploymentQueens::new(vec![0, 1, 0, 2, 5, 3, 3, 6]);
-    let k_2 = DeploymentQueens::new(vec![0, 1, 0, 2, 5, 7, 3, 6]);
-    let c_1 = problem.heuristic(&k_1);
-    let c_2 = problem.heuristic(&k_2);
-    assert_eq!(7, c_1);
-    assert_eq!(5, c_2); */
-
-    let mut resolver = Resolver::new(SteepestDescend::new(rand::rng()));
-    resolve_nqueen(&problem, &mut resolver);
-    resolve_restart_nqueen(&problem, &mut resolver);
+    run_nqueen(8, 250);
 }

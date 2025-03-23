@@ -42,6 +42,8 @@ mod tests {
         }
     }
 
+    use ordered_float::OrderedFloat;
+
     struct CleanProblem {}
 
     impl CleanProblem {
@@ -53,13 +55,17 @@ mod tests {
     impl Problem for CleanProblem {
         type State = HouseState;
         type Action = Action;
-        type Cost = u64;
+        type Cost = OrderedFloat<f64>;
 
         fn executable_actions(&self, _: &Self::State) -> impl Iterator<Item = Self::Action> {
             vec![Action::Left, Action::Right, Action::Suck].into_iter()
         }
 
-        fn result(&self, state: &Self::State, action: &Self::Action) -> (Self::State, u64) {
+        fn result(
+            &self,
+            state: &Self::State,
+            action: &Self::Action,
+        ) -> (Self::State, OrderedFloat<f64>) {
             let result_state = match action {
                 Action::Left => {
                     HouseState::from_parts(Position::Left, state.right_state, state.left_state)
@@ -76,10 +82,10 @@ mod tests {
                     }
                 },
             };
-            (result_state, 1)
+            (result_state, 1.into())
         }
 
-        fn heuristic(&self, state: &Self::State) -> u64 {
+        fn heuristic(&self, state: &Self::State) -> OrderedFloat<f64> {
             let mut result = 0;
 
             if state.left_state == TailState::Clean {
@@ -90,7 +96,7 @@ mod tests {
                 result += 1;
             }
 
-            return result;
+            return result.into();
         }
     }
 
