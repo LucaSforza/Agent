@@ -7,21 +7,16 @@ use agent::iterative_improvement::{
 use agent::problem::{IterativeImprovingProblem, Problem};
 use rand_distr::uniform::{UniformSampler, UniformUsize};
 
-enum Direction {
-    Up,
-    Down,
-}
-
 struct MoveQueen {
     col: usize,
-    direction: Direction,
+    new_row: usize,
 }
 
 impl MoveQueen {
-    fn new(col: usize, dir: Direction) -> Self {
+    fn new(col: usize, new_row: usize) -> Self {
         Self {
             col: col,
-            direction: dir,
+            new_row: new_row,
         }
     }
 }
@@ -53,18 +48,9 @@ impl DeploymentQueens {
         Self { pos: pos }
     }
 
-    fn move_queen(&self, problem: &NQueen, dir: &MoveQueen) -> Self {
+    fn move_queen(&self, dir: &MoveQueen) -> Self {
         let mut new_pos = self.pos.clone();
-        match dir.direction {
-            Direction::Up => {
-                assert!(new_pos[dir.col] != 0);
-                new_pos[dir.col] -= 1;
-            }
-            Direction::Down => {
-                assert!(new_pos[dir.col] + 1 < problem.n);
-                new_pos[dir.col] += 1;
-            }
-        }
+        new_pos[dir.col] = dir.new_row;
         Self::new(new_pos)
     }
 }
@@ -91,14 +77,13 @@ impl Problem for NQueen {
     type Cost = OrderedFloat<f64>;
 
     fn executable_actions(&self, state: &Self::State) -> impl Iterator<Item = Self::Action> {
-        let mut actions = Vec::with_capacity(self.n * 2);
+        let mut actions = Vec::with_capacity(self.n * (self.n - 1));
 
         for i in 0..self.n {
-            if state.pos[i] + 1 < self.n {
-                actions.push(MoveQueen::new(i, Direction::Down));
-            }
-            if state.pos[i] != 0 {
-                actions.push(MoveQueen::new(i, Direction::Up));
+            for j in 0..self.n {
+                if state.pos[i] != j {
+                    actions.push(MoveQueen::new(i, j))
+                }
             }
         }
 
@@ -106,7 +91,7 @@ impl Problem for NQueen {
     }
 
     fn result(&self, state: &Self::State, action: &Self::Action) -> (Self::State, Self::Cost) {
-        let new_state = state.move_queen(self, action);
+        let new_state = state.move_queen(action);
         (new_state, 0.into())
     }
 
@@ -207,5 +192,5 @@ fn run_nqueen(n: usize, iterations: u32, restarts: usize) {
 }
 
 fn main() {
-    run_nqueen(8, 2500, 100);
+    run_nqueen(8, 2500, 10);
 }
