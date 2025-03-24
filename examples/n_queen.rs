@@ -172,6 +172,35 @@ fn resolve_restart_nqueen<A: ImprovingAlgorithm<NQueen>>(
     println!("\t  Mean time: {:?}", total_duration / iterations);
 }
 
+fn run_one_time_nqueen_algo<A: ImprovingAlgorithm<NQueen>>(
+    problem: &NQueen,
+    resolver: &mut Resolver<A, NQueen>,
+    n_restarts: usize,
+) {
+    let r = resolver.resolve(problem);
+    println!("{:?}", r);
+
+    let r = resolver.resolve_restart(problem, n_restarts);
+
+    println!("{:?}", r)
+}
+
+fn run_one_time_nqueen(size: usize, n_restarts: usize) {
+    let problem = NQueen::new(size);
+
+    println!("Steepest Descend:");
+    let mut resolver = Resolver::new(SteepestDescend::new(rand::rng()));
+    run_one_time_nqueen_algo(&problem, &mut resolver, n_restarts);
+
+    println!("\nHill Climbing:");
+    let mut resolver = Resolver::new(HillClimbing::with_max_lateral(rand::rng(), 100));
+    run_one_time_nqueen_algo(&problem, &mut resolver, n_restarts);
+
+    println!("\nSimulated Annealing:");
+    let mut resolver = Resolver::new(SimulatedAnnealing::new(rand::rng()));
+    run_one_time_nqueen_algo(&problem, &mut resolver, n_restarts);
+}
+
 fn run_nqueen(n: usize, iterations: u32, restarts: usize) {
     let problem = NQueen::new(n);
 
@@ -192,5 +221,6 @@ fn run_nqueen(n: usize, iterations: u32, restarts: usize) {
 }
 
 fn main() {
-    run_nqueen(8, 2500, 10);
+    run_nqueen(32, 10, 10);
+    run_one_time_nqueen(32, 10);
 }

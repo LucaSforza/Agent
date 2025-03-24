@@ -247,21 +247,19 @@ where
 pub struct SimulatedAnnealing<R: Rng> {
     rng: R,
     cooling: fn(usize) -> f64,
+    precision: f64,
 }
 
 impl<R: Rng> SimulatedAnnealing<R> {
     pub fn default_cooling(t: usize) -> f64 {
-        if t < 1000 {
-            1.0 / (t as f64)
-        } else {
-            0.0
-        }
+        1.0 / (t as f64)
     }
 
     pub fn new(rng: R) -> Self {
         Self {
             rng: rng,
             cooling: Self::default_cooling,
+            precision: 10e-6,
         }
     }
 
@@ -269,6 +267,7 @@ impl<R: Rng> SimulatedAnnealing<R> {
         Self {
             rng: rng,
             cooling: cooling,
+            precision: 10e-6,
         }
     }
 }
@@ -286,7 +285,7 @@ where
 
         for t in 0.. {
             let velocity = (self.cooling)(t);
-            if velocity <= 0.0 {
+            if velocity <= self.precision {
                 return AttemptResult::new(curr_state, curr_h, t + 1);
             }
             let vicinity: Vec<P::Action> = problem.executable_actions(&curr_state).collect();
@@ -300,7 +299,6 @@ where
                 } else {
                     let diff: f64 = (curr_h - next_h).abs().into();
                     let r: f64 = self.rng.random();
-
                     if r <= (1.0 / exp(diff / velocity)) {
                         curr_state = next_state;
                         curr_h = next_h;
