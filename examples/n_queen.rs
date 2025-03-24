@@ -4,7 +4,7 @@ use std::time::Duration;
 use agent::iterative_improvement::{
     HillClimbing, ImprovingAlgorithm, Resolver, SimulatedAnnealing, SteepestDescend,
 };
-use agent::problem::{IterativeImprovingProblem, Problem};
+use agent::problem::{IterativeImprovingProblem, Problem, RandomizeState, Utility};
 use rand_distr::uniform::{UniformSampler, UniformUsize};
 
 struct MoveQueen {
@@ -94,22 +94,18 @@ impl Problem for NQueen {
         let new_state = state.move_queen(action);
         (new_state, 0.into())
     }
+}
 
+impl Utility for NQueen {
     fn heuristic(&self, state: &Self::State) -> Self::Cost {
         let mut result = 0.0;
 
         for i in 0..self.n {
             for j in (i + 1)..self.n {
-                if state.pos[i] == state.pos[j] {
+                if state.pos[i] == state.pos[j]
+                    || state.pos[i].abs_diff(state.pos[j]) == i.abs_diff(j)
+                {
                     result += 1.0;
-                    // break;
-                }
-            }
-
-            for j in (i + 1)..self.n {
-                if state.pos[i].abs_diff(state.pos[j]) == i.abs_diff(j) {
-                    result += 1.0;
-                    // break;
                 }
             }
         }
@@ -118,7 +114,7 @@ impl Problem for NQueen {
     }
 }
 
-impl IterativeImprovingProblem for NQueen {
+impl RandomizeState for NQueen {
     fn random_state<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> Self::State {
         let mut pos = Vec::with_capacity(self.n);
         for _ in 0..self.n {
@@ -128,6 +124,8 @@ impl IterativeImprovingProblem for NQueen {
         DeploymentQueens::new(pos)
     }
 }
+
+impl IterativeImprovingProblem for NQueen {}
 
 fn resolve_nqueen<A: ImprovingAlgorithm<NQueen>>(
     problem: &NQueen,

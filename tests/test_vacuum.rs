@@ -6,7 +6,7 @@ mod tests {
         explorer::{
             AStarExplorer, BFSExplorer, BestFirstGreedyExplorer, DFSExplorer, MinCostExplorer,
         },
-        problem::{Problem, StateExplorerProblem},
+        problem::{Problem, StateExplorerProblem, Utility, WithSolution},
     };
     // use frontier::DequeFrontier;
 
@@ -142,17 +142,21 @@ mod tests {
             };
             (result_state, 1.into())
         }
+    }
 
+    impl Utility for CleanProblem {
         fn heuristic(&self, state: &Self::State) -> OrderedFloat<f64> {
             (state.where_dirty.len() as f64).into()
         }
     }
 
-    impl StateExplorerProblem for CleanProblem {
+    impl WithSolution for CleanProblem {
         fn is_goal(&self, state: &Self::State) -> bool {
             state.where_dirty.is_empty()
         }
     }
+
+    impl StateExplorerProblem for CleanProblem {}
 
     #[test]
     fn test_vacuum_bfs() {

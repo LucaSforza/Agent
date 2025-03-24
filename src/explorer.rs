@@ -12,7 +12,7 @@ use crate::{
         AStarBackend, BestFirstBackend, DequeBackend, Frontier, FrontierBackend, MinCostBackend,
         StackBackend,
     },
-    problem::StateExplorerProblem,
+    problem::*,
 };
 
 struct InnerResult<Action>

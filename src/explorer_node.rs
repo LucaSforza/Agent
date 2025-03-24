@@ -5,7 +5,7 @@ use std::hash::Hash;
 use std::rc::Rc;
 use std::vec::Vec;
 
-use crate::problem::StateExplorerProblem;
+use crate::problem::*;
 
 #[derive(PartialEq, Eq)]
 pub struct Node<P>

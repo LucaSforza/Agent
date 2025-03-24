@@ -8,7 +8,7 @@ use std::{
 };
 
 use crate::explorer_node::Node;
-use crate::problem::StateExplorerProblem;
+use crate::problem::*;
 
 pub trait FrontierBackend<P>: Default
 where

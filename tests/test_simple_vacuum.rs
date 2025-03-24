@@ -2,7 +2,7 @@
 mod tests {
     use agent::{
         explorer::{BFSExplorer, DFSExplorer},
-        problem::{Problem, StateExplorerProblem},
+        problem::{Problem, StateExplorerProblem, Utility, WithSolution},
     };
     // use frontier::DequeFrontier;
 
@@ -84,7 +84,9 @@ mod tests {
             };
             (result_state, 1.into())
         }
+    }
 
+    impl Utility for CleanProblem {
         fn heuristic(&self, state: &Self::State) -> OrderedFloat<f64> {
             let mut result = 0;
 
@@ -100,11 +102,13 @@ mod tests {
         }
     }
 
-    impl StateExplorerProblem for CleanProblem {
+    impl WithSolution for CleanProblem {
         fn is_goal(&self, state: &Self::State) -> bool {
             state.left_state == TailState::Clean && state.right_state == TailState::Clean
         }
     }
+
+    impl StateExplorerProblem for CleanProblem {}
 
     #[test]
     fn test_bfs_clean_left_dirty_right() {
