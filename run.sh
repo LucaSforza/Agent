@@ -2,7 +2,7 @@
 
 if [ -d $1 ]; then
     echo "Passare come argomento l'esempio da eseguire"
-    echo "Quelli disponibili: n_queen"
+    echo "Quelli disponibili: n_queen protein_folding"
     exit 1
 fi
 
