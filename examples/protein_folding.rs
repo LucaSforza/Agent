@@ -108,6 +108,12 @@ impl Board {
         }
     }
 
+    fn init_state() -> Self {
+        let mut board = Self::new();
+        board.add_pos(Direction::Down); // Non importa quale sia la direzione iniziale, tanto non farà neanche parte del risultato
+        board
+    }
+
     fn suitable(&self, pos: &Pos, n: isize) -> bool {
         if pos.x >= n || pos.y >= n || pos.x <= -n || pos.y <= -n {
             return false;
@@ -281,12 +287,9 @@ fn main() {
         AminoAcid::P,
     ]);
 
-    // let n = problem.aminoacids.len();
-
     let mut resolver = MinCostExplorer::new(problem);
 
-    let mut init_state = Board::new();
-    init_state.add_pos(Direction::Down);
+    let init_state = Board::init_state();
 
     let r = resolver.search(init_state);
 
