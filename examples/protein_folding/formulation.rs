@@ -118,23 +118,32 @@ impl Board {
         &self.protein[*index]
     }
 
-    fn search_for_contacts(
-        &self,
-        problem: &ProteinFolding,
-        pos: &Pos,
-    ) -> <ProteinFolding as Problem>::Cost {
-        let mut contacts = 0;
+    fn contacts(&self, problem: &ProteinFolding) -> u32 {
+        let mut total_contacts = 0;
 
         for (i, index) in self.index.iter().enumerate() {
             let amin = &self.protein[*index];
-            assert!(amin.x != pos.x || amin.y != pos.y);
-            if problem.aminoacids[i] == AminoAcid::H
-                && ((amin.x - pos.x).abs() + (amin.y - pos.y).abs()) == 1
-            {
-                contacts += 1;
+            if problem.aminoacids[i] == AminoAcid::H {
+                for dir in [
+                    Direction::Up,
+                    Direction::Down,
+                    Direction::Left,
+                    Direction::Right,
+                ] {
+                    let neighbor_pos = amin.clone_move(dir);
+                    for (j, other_index) in self.index.iter().enumerate() {
+                        if i != j
+                            && self.protein[*other_index] == neighbor_pos
+                            && problem.aminoacids[j] == AminoAcid::H
+                        {
+                            total_contacts += 1;
+                        }
+                    }
+                }
             }
         }
-        return contacts;
+
+        total_contacts / 2 // Each contact is counted twice, so divide by 2
     }
 
     fn add_pos(
@@ -158,15 +167,19 @@ impl Board {
             let last_amin = self.get_last_aminoacid();
             let new_pos = last_amin.clone_move(dir);
             let b = self.protein.add_node(new_pos);
-            let contancts;
-            if problem.aminoacids[self.index.len() - 1] == AminoAcid::H {
-                contancts = self.search_for_contacts(problem, &new_pos);
-            } else {
-                contancts = 0;
-            }
             self.protein.add_edge(*self.get_last_index(), b, dir);
             self.index.push(b);
-            return 2 - contancts;
+
+            let final_cost;
+            if self.index.len() == problem.aminoacids.len() {
+                let max_contacts = problem.h_numer / 2;
+                let contacts = self.contacts(problem);
+                final_cost = max_contacts - contacts;
+            } else {
+                final_cost = 0;
+            }
+
+            return 1 + final_cost;
             // Posso fare al piu due contatti per aminoacido H
             // quindi se voglio minimizzare il costo per massimizzare i contatti
             // allora sottraggo a 2 con il numero effettivo di contatti
@@ -219,9 +232,9 @@ impl Problem for ProteinFolding {
         let mut actions = Vec::with_capacity(4);
 
         for dir in vec![
-            Direction::Up,
-            Direction::Down,
             Direction::Left,
+            Direction::Down,
+            Direction::Up,
             Direction::Right,
         ] {
             if state.suitable(&last_aminoacid.clone_move(dir)) {
@@ -281,15 +294,14 @@ impl Utility for ProteinFolding {
 
         let mut h_numer = self.h_numer;
 
+        // gestisci gli aminoacidi mancanti
         for aminoacid in self.aminoacids.iter().skip(state.index.len()) {
-            // per ogni aminoacido rimanente non ancora posizionato, se non è H allora
-            // sono sicuro che il suo costo sarà 2, altrimento lo sottraggo ad h_number
-            // che contiene il numero di aminoacidi H
-            if *aminoacid != AminoAcid::H {
-                cost += 2;
-            } else {
+            // se un aminoacido è H allora toglilo dalla conta dei aminoacidi da sottrarre
+            if *aminoacid == AminoAcid::H {
                 h_numer -= 1;
             }
+            // per ogni aminoacido che non ho ancora posizionato dovrò pagare 1
+            cost += 1;
         }
 
         // sottraggo al costo il numero di H posizionati

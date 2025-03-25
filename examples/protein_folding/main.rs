@@ -119,23 +119,23 @@ fn print_solution(protein: &Vec<AminoAcid>, solution: Vec<Direction>) {
 fn run_all(protein: &Vec<AminoAcid>) {
     println!("MinCost:");
     run_example::<MinCost>(protein);
-    /*println!("BFS:");
+    println!("BFS:");
     run_example::<BFS>(protein);
     println!("DFS:");
-    run_example::<DFS>(protein);*/
+    run_example::<DFS>(protein);
     println!("AStar:");
     run_example::<AStar>(protein);
     println!("BestFirst:");
     run_example::<BestFirst>(protein);
-    /*println!("Iterative:");
-        let problem = ProteinFolding::new(protein.clone());
+    println!("Iterative:");
+    let problem = ProteinFolding::new(protein.clone());
 
     let init_state = Board::init_state(&problem);
     let mut resolver = Explorer::<ProteinFolding, DFS>::new(problem);
 
     let r = resolver.iterative_search(init_state, 300);
     println!("{}", r);
-    print_solution(protein, r.actions.unwrap()); */
+    print_solution(protein, r.actions.unwrap());
 }
 
 fn main() {
@@ -152,12 +152,4 @@ fn main() {
     ];
 
     run_all(&protein);
-    /* let protein = vec![
-        AminoAcid::H,
-        AminoAcid::P,
-        AminoAcid::P,
-        AminoAcid::H,
-        AminoAcid::H,
-    ];
-    run_all(&protein); */
 }
