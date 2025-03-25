@@ -1,11 +1,11 @@
-use std::{
-    cell::RefCell,
-    ops::{Deref, DerefMut},
-};
+use std::ops::{Deref, DerefMut};
 
-use agent::problem::{Problem, Utility};
+use agent::{
+    explorer::MinCostExplorer,
+    problem::{Problem, StateExplorerProblem, Utility, WithSolution},
+};
 use ordered_float::OrderedFloat;
-use petgraph::{data::Build, graph::NodeIndex};
+use petgraph::graph::NodeIndex;
 
 #[derive(PartialEq, Eq)]
 enum AminoAcid {
@@ -13,7 +13,7 @@ enum AminoAcid {
     P,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Hash, Debug, PartialEq, Eq)]
 enum Direction {
     Up,
     Down,
@@ -21,15 +21,30 @@ enum Direction {
     Right,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Hash)]
 struct Pos {
     id: usize,
-    x: usize,
-    y: usize,
+    x: isize,
+    y: isize,
     dir: Direction,
 }
 
+impl PartialEq for Pos {
+    fn eq(&self, other: &Self) -> bool {
+        self.x == other.x && self.y == other.y
+    }
+}
+
 impl Pos {
+    fn new() -> Self {
+        Self {
+            id: 0,
+            x: 0,
+            y: 0,
+            dir: Direction::Up,
+        } // la direzione iniziale non importa perché poi la sostituisco
+    }
+
     fn move_dir(&mut self, dir: Direction) {
         match dir {
             Direction::Up => self.x -= 1,
@@ -44,43 +59,6 @@ impl Pos {
         new_pos.move_dir(dir);
         return new_pos;
     }
-
-    fn old_pos(&self, n: usize) -> Self {
-        let x;
-        let y;
-
-        match self.dir {
-            Direction::Up => {
-                assert!(self.x != 0);
-                x = self.x - 1;
-                y = self.y;
-            }
-            Direction::Down => {
-                assert!((self.x + 1) as usize != n);
-                x = self.x + 1;
-                y = self.y;
-            }
-            Direction::Left => {
-                assert!(self.y != 0);
-                x = self.x;
-                y = self.y - 1;
-            }
-            Direction::Right => {
-                assert!((self.y + 1) as usize != n);
-                x = self.x;
-                y = self.y + 1;
-            }
-        };
-
-        // old_pos.dir = Some(*self);
-
-        Pos {
-            id: self.id - 1,
-            x: x,
-            y: y,
-            dir: self.dir, // TODO: change
-        }
-    }
 }
 
 use petgraph::{Graph, Undirected};
@@ -91,16 +69,55 @@ struct Board {
     index: Vec<NodeIndex>,
 }
 
-impl Board {
-    fn new() -> Self {
-        Self {
-            protein: Graph::new_undirected(),
-            index: Vec::new(),
+impl std::hash::Hash for Board {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        for i in self.index.iter() {
+            self.protein[*i].hash(state);
         }
     }
 }
 
+impl PartialEq for Board {
+    fn eq(&self, other: &Self) -> bool {
+        for (i, j) in self.index.iter().zip(other.index.iter()) {
+            if self.protein[*i] != other.protein[*j] {
+                return false;
+            }
+        }
+        return true;
+    }
+}
+
+impl Eq for Board {}
+
+impl std::fmt::Debug for Board {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.index.len())
+    }
+}
+
 impl Board {
+    fn new(n: usize) -> Self {
+        Self {
+            protein: Default::default(),
+            index: Vec::with_capacity(n),
+        }
+    }
+
+    fn suitable(&self, pos: &Pos, n: isize) -> bool {
+        if pos.x >= n || pos.y >= n || pos.x <= -n || pos.y <= -n {
+            return false;
+        }
+
+        for i in self.index.iter() {
+            let a = &self.protein[*i];
+            if a.x == pos.x && a.y == pos.y {
+                return false;
+            }
+        }
+        return true;
+    }
+
     fn get_last_index(&self) -> &NodeIndex {
         self.index
             .last()
@@ -109,44 +126,50 @@ impl Board {
 
     fn get_last_aminoacid(&self) -> &Pos {
         let index = self.get_last_index();
-        &self.protein[index]
+        &self.protein[*index]
+    }
+
+    fn search_for_contacts(&self, pos: &Pos) -> <ProteinFolding as Problem>::Cost {
+        let mut contacts = 0.0;
+
+        for i in self.index.iter() {
+            let amin = &self.protein[*i];
+            assert!(amin.x != pos.x || amin.y != pos.y);
+            if ((amin.x - pos.x).abs() + (amin.y - pos.y).abs()) == 1 {
+                contacts += 1.0;
+            }
+        }
+        return contacts.into();
     }
 
     fn add_pos(
         &mut self,
-        problem: &ProteinFolding,
+        // problem: &ProteinFolding,
         dir: Direction,
     ) -> <ProteinFolding as Problem>::Cost {
         if self.index.len() == 0 {
             // Caso base
             // Controllare che la direzione iniziale non sia verso l'alto
-            let mut old_init_pos = problem.next_firts_attempt.borrow_mut();
 
-            let mut new_init_pos = *old_init_pos;
+            let mut init_pos = Pos::new();
 
-            if old_init_pos.x + 1 < problem.n {
-                old_init_pos.move_dir(Direction::Left);
-            } else if old_init_pos.y < problem.n {
-                old_init_pos.x = 0;
-                old_init_pos.move_dir(Direction::Down);
-            } else {
-                // fare attenzione a resettarlo a 0 quando finisco
-                panic!("Combinations are ended"); // TODO: traslate better
-            }
-            new_init_pos.id = 0;
-            new_init_pos.dir = dir;
-            self.protein.add_node(new_init_pos);
+            init_pos.dir = dir;
+            let index = self.protein.add_node(init_pos);
+            self.index.push(index);
 
             return 0.0.into();
         } else {
             // Passo induttivo
+            // assumiamo che il nuovo aminoacido non sia sopra ad un altro
             let last_amin = self.get_last_aminoacid();
             let mut new_pos = last_amin.clone_move(dir);
             new_pos.id = last_amin.id + 1;
             new_pos.dir = dir;
             let b = self.protein.add_node(new_pos);
+            let contancts = self.search_for_contacts(&new_pos);
             self.protein.add_edge(*self.get_last_index(), b, dir);
-            return 1.0.into(); // TODO: change
+            self.index.push(b);
+            return (2.0 - contancts.0).into();
         }
     }
 }
@@ -165,12 +188,16 @@ impl DerefMut for Board {
     }
 }
 
-type NextPos = Pos;
-
 struct ProteinFolding {
-    aminoacids: Vec<AminoAcid>,
-    n: usize,
-    next_firts_attempt: RefCell<Pos>, // quando non ho piazzato nessun aminoacido allora provo tutte le n*n combinazioni
+    aminoacids: Vec<AminoAcid>, // len is n
+}
+
+impl ProteinFolding {
+    fn new(aminoacid: Vec<AminoAcid>) -> Self {
+        Self {
+            aminoacids: aminoacid,
+        }
+    }
 }
 
 impl Problem for ProteinFolding {
@@ -179,24 +206,82 @@ impl Problem for ProteinFolding {
     type Cost = OrderedFloat<f64>;
 
     fn executable_actions(&self, state: &Self::State) -> impl Iterator<Item = Self::Action> {
-        todo!()
+        let last_aminoacid;
+        if state.index.len() == 0 {
+            return vec![
+                Direction::Up,
+                Direction::Down,
+                Direction::Left,
+                Direction::Right,
+            ]
+            .into_iter();
+        } else {
+            last_aminoacid = state.get_last_aminoacid();
+        }
+
+        let mut actions = Vec::with_capacity(3);
+        let n = self.aminoacids.len() as isize;
+
+        if state.suitable(&last_aminoacid.clone_move(Direction::Down), n) {
+            actions.push(Direction::Down);
+        }
+        if state.suitable(&last_aminoacid.clone_move(Direction::Up), n) {
+            actions.push(Direction::Up);
+        }
+        if state.suitable(&last_aminoacid.clone_move(Direction::Left), n) {
+            actions.push(Direction::Left);
+        }
+        if state.suitable(&last_aminoacid.clone_move(Direction::Right), n) {
+            actions.push(Direction::Right);
+        }
+
+        actions.into_iter()
     }
 
     fn result(&self, board: &Self::State, direction: &Self::Action) -> (Self::State, Self::Cost) {
         let mut new_board = board.clone();
-        let cost = new_board.add_pos(self, *direction);
+        let cost = new_board.add_pos(*direction);
 
         (new_board, cost)
     }
 }
 
-impl Utility for ProteinFolding {
-    fn heuristic(&self, state: &Self::State) -> Self::Cost {
-        // Calcolare la distanza euclidiana dagli aminoacidi H non consecutivi e sottrai per gli aminoacidi
-        todo!()
+impl WithSolution for ProteinFolding {
+    fn is_goal(&self, state: &Self::State) -> bool {
+        self.aminoacids.len() == state.index.len()
     }
 }
 
+impl Utility for ProteinFolding {
+    fn heuristic(&self, _state: &Self::State) -> Self::Cost {
+        // Calcolare la distanza euclidiana dagli aminoacidi H non consecutivi e sottrai per gli aminoacidi
+        0.0.into()
+    }
+}
+
+impl StateExplorerProblem for ProteinFolding {}
+
 fn main() {
-    println!("Hello World!")
+    let problem = ProteinFolding::new(vec![
+        AminoAcid::P,
+        AminoAcid::H,
+        AminoAcid::H,
+        AminoAcid::P,
+        AminoAcid::H,
+        AminoAcid::P,
+        AminoAcid::P,
+        AminoAcid::H,
+        AminoAcid::P,
+    ]);
+
+    let n = problem.aminoacids.len();
+
+    let mut resolver = MinCostExplorer::with_verbosity(problem, agent::explorer::Verbosity::Low);
+
+    let mut init_state = Board::new(n);
+    init_state.add_pos(Direction::Down);
+
+    let r = resolver.search(init_state);
+
+    println!("{}", r)
 }
