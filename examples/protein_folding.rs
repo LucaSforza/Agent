@@ -79,6 +79,10 @@ impl std::hash::Hash for Board {
 
 impl PartialEq for Board {
     fn eq(&self, other: &Self) -> bool {
+        if self.index.len() != other.index.len() {
+            return false;
+        }
+
         for (i, j) in self.index.iter().zip(other.index.iter()) {
             if self.protein[*i] != other.protein[*j] {
                 return false;
@@ -97,10 +101,10 @@ impl std::fmt::Debug for Board {
 }
 
 impl Board {
-    fn new(n: usize) -> Self {
+    fn new() -> Self {
         Self {
             protein: Default::default(),
-            index: Vec::with_capacity(n),
+            index: Vec::new(),
         }
     }
 
@@ -149,7 +153,6 @@ impl Board {
     ) -> <ProteinFolding as Problem>::Cost {
         if self.index.len() == 0 {
             // Caso base
-            // Controllare che la direzione iniziale non sia verso l'alto
 
             let mut init_pos = Pos::new();
 
@@ -160,7 +163,8 @@ impl Board {
             return 0.0.into();
         } else {
             // Passo induttivo
-            // assumiamo che il nuovo aminoacido non sia sopra ad un altro
+            // assumiamo che il nuovo aminoacido non sia sopra ad un altro (già controllo in executable_actions)
+            // e comunque ci stanno degli assert che controllano questo requisito
             let last_amin = self.get_last_aminoacid();
             let mut new_pos = last_amin.clone_move(dir);
             new_pos.id = last_amin.id + 1;
@@ -170,6 +174,9 @@ impl Board {
             self.protein.add_edge(*self.get_last_index(), b, dir);
             self.index.push(b);
             return (2.0 - contancts.0).into();
+            // Posso fare al piu due contatti per aminoacido H
+            // quindi se voglio minimizzare il costo per massimizzare i contatti
+            // allora sottraggo a 2 con il numero effettivo di contatti
         }
     }
 }
@@ -274,11 +281,11 @@ fn main() {
         AminoAcid::P,
     ]);
 
-    let n = problem.aminoacids.len();
+    // let n = problem.aminoacids.len();
 
-    let mut resolver = MinCostExplorer::with_verbosity(problem, agent::explorer::Verbosity::Low);
+    let mut resolver = MinCostExplorer::new(problem);
 
-    let mut init_state = Board::new(n);
+    let mut init_state = Board::new();
     init_state.add_pos(Direction::Down);
 
     let r = resolver.search(init_state);
