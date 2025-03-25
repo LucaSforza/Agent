@@ -1,7 +1,10 @@
-use std::ops::{Deref, DerefMut};
+use std::{
+    collections::{HashMap, HashSet},
+    ops::{Deref, DerefMut},
+};
 
 use agent::{
-    explorer::{Explorer, MinCostExplorer},
+    explorer::Explorer,
     frontier::{
         AStarBackend, BestFirstBackend, DequeBackend, FrontierBackend, MinCostBackend, StackBackend,
     },
@@ -280,11 +283,13 @@ impl Utility for ProteinFolding {
         let mut cost = 0.0;
 
         for (i, a) in state.index.iter().zip(self.aminoacids.iter()) {
+            // se l'aminoacido è H allora controllo la distanza minima rispetto ad un altro aminoacido H che non sia adiacente
             if *a == AminoAcid::H {
                 let amin = &state.protein[*i];
                 let mut min_distrance = f64::INFINITY;
                 for (j, b) in state.index.iter().zip(self.aminoacids.iter()) {
-                    if i != j && *b == AminoAcid::H {
+                    if i != j && *b == AminoAcid::H && state.find_edge_undirected(*i, *j).is_none()
+                    {
                         // calcola la distanza euclidiana e aggiungila al costo
                         let other_amin = &state.protein[*j];
                         let distance = ((amin.x - other_amin.x).pow(2)
@@ -296,19 +301,31 @@ impl Utility for ProteinFolding {
                         }
                     }
                 }
+                // se l'ho trovato lo aggiungo al costo
                 if min_distrance.is_finite() {
                     cost += min_distrance;
                 }
             }
         }
 
+        let mut h_numer = self.h_numer;
+
         for aminoacid in self.aminoacids.iter().skip(state.index.len()) {
+            // per ogni aminoacido rimanente non ancora posizionato, se non è H allora
+            // sono sicuro che il suo costo sarà 2, altrimento lo sottraggo ad h_number
+            // che contiene il numero di aminoacidi H
             if *aminoacid != AminoAcid::H {
                 cost += 2.0;
+            } else {
+                h_numer -= 1;
             }
         }
 
-        (cost - self.h_numer as f64).into()
+        // sottraggo al costo il numero di H posizionati
+        // questo perché vorrei che la soluzione ottima abbia 0 come euristica.
+        // Se ogni H è stato posizionato con successo allora le loro distanze euclidiane sono 1
+        // vengono sommate al costo e poi sottratte qua.
+        (cost - h_numer as f64).into()
     }
 }
 
@@ -321,7 +338,8 @@ fn run_example<B: FrontierBackend<ProteinFolding> + std::fmt::Debug>(protein: &V
     let init_state = Board::init_state();
 
     let r = resolver.search(init_state);
-    println!("{}", r)
+    println!("{}", r);
+    print_solution(protein, r.actions.unwrap());
 }
 
 type MinCost = MinCostBackend<ProteinFolding>;
@@ -329,6 +347,96 @@ type DFS = StackBackend<ProteinFolding>;
 type BFS = DequeBackend<ProteinFolding>;
 type AStar = AStarBackend<ProteinFolding>;
 type BestFirst = BestFirstBackend<ProteinFolding>;
+
+fn print_solution(protein: &Vec<AminoAcid>, solution: Vec<Direction>) {
+    // Genera le posizioni originali degli aminoacidi
+    let mut positions = vec![(0, 0)];
+    let mut current_pos = (0, 0);
+    for dir in solution {
+        current_pos = match dir {
+            Direction::Up => (current_pos.0, current_pos.1 + 1),
+            Direction::Down => (current_pos.0, current_pos.1 - 1),
+            Direction::Left => (current_pos.0 - 1, current_pos.1),
+            Direction::Right => (current_pos.0 + 1, current_pos.1),
+        };
+        positions.push(current_pos);
+    }
+
+    // Mappa posizioni -> indice
+    let pos_to_index: HashMap<(i32, i32), usize> = positions
+        .iter()
+        .enumerate()
+        .map(|(i, pos)| (*pos, i))
+        .collect();
+
+    // Conta H adiacenti non collegati
+    let mut adjacency_pairs = HashSet::new();
+    for (i, aa) in protein.iter().enumerate() {
+        if *aa == AminoAcid::H {
+            let (x, y) = positions[i];
+            // Controlla tutte e quattro le direzioni
+            for (dx, dy) in &[(1, 0), (-1, 0), (0, 1), (0, -1)] {
+                let neighbor_pos = (x + dx, y + dy);
+                if let Some(&j) = pos_to_index.get(&neighbor_pos) {
+                    if protein[j] == AminoAcid::H && j != i {
+                        // Escludi coppie consecutive
+                        if (i as i32 - j as i32).abs() != 1 {
+                            let pair = if i < j { (i, j) } else { (j, i) };
+                            adjacency_pairs.insert(pair);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Crea griglia scalata per legami
+    let mut grid: HashMap<(i32, i32), char> = HashMap::new();
+    let (mut min_x, mut max_x, mut min_y, mut max_y) = (i32::MAX, i32::MIN, i32::MAX, i32::MIN);
+
+    // Aggiungi aminoacidi alla griglia
+    for (i, &(x, y)) in positions.iter().enumerate() {
+        let scaled_x = x * 2;
+        let scaled_y = y * 2;
+        grid.insert(
+            (scaled_x, scaled_y),
+            match protein[i] {
+                AminoAcid::H => 'H',
+                AminoAcid::P => 'P',
+            },
+        );
+        min_x = min_x.min(scaled_x);
+        max_x = max_x.max(scaled_x);
+        min_y = min_y.min(scaled_y);
+        max_y = max_y.max(scaled_y);
+    }
+
+    // Aggiungi legami alla griglia
+    for i in 0..positions.len() - 1 {
+        let (x1, y1) = positions[i];
+        let (x2, y2) = positions[i + 1];
+        let (sx1, sy1) = (x1 * 2, y1 * 2);
+        let (sx2, sy2) = (x2 * 2, y2 * 2);
+
+        if x1 != x2 {
+            grid.insert((sx1 + (sx2 - sx1).signum(), sy1), '-');
+        } else {
+            grid.insert((sx1, sy1 + (sy2 - sy1).signum()), '|');
+        }
+    }
+
+    // Stampa la griglia
+    for y in (min_y..=max_y).rev() {
+        let mut line = String::new();
+        for x in min_x..=max_x {
+            line.push(*grid.get(&(x, y)).unwrap_or(&' '));
+        }
+        println!("{}", line);
+    }
+
+    // Stampa il conteggio
+    println!("\nEnergy: {}", -(adjacency_pairs.len() as isize));
+}
 
 fn main() {
     let protein = vec![
@@ -360,5 +468,6 @@ fn main() {
     let init_state = Board::init_state();
 
     let r = resolver.iterative_search(init_state, 300);
-    println!("{}", r)
+    println!("{}", r);
+    print_solution(&protein, r.actions.unwrap());
 }
