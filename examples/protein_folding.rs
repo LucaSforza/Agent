@@ -1,13 +1,16 @@
 use std::ops::{Deref, DerefMut};
 
 use agent::{
-    explorer::MinCostExplorer,
+    explorer::{Explorer, MinCostExplorer},
+    frontier::{
+        AStarBackend, BestFirstBackend, DequeBackend, FrontierBackend, MinCostBackend, StackBackend,
+    },
     problem::{Problem, StateExplorerProblem, Utility, WithSolution},
 };
 use ordered_float::OrderedFloat;
 use petgraph::graph::NodeIndex;
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone)]
 enum AminoAcid {
     H,
     P,
@@ -203,12 +206,18 @@ impl DerefMut for Board {
 
 struct ProteinFolding {
     aminoacids: Vec<AminoAcid>, // len is n
+    h_numer: u32,
 }
 
 impl ProteinFolding {
     fn new(aminoacid: Vec<AminoAcid>) -> Self {
+        let h_number = aminoacid
+            .iter()
+            .map(|x| if *x == AminoAcid::H { 1 } else { 0 })
+            .sum();
         Self {
             aminoacids: aminoacid,
+            h_numer: h_number,
         }
     }
 }
@@ -266,32 +275,90 @@ impl WithSolution for ProteinFolding {
 }
 
 impl Utility for ProteinFolding {
-    fn heuristic(&self, _state: &Self::State) -> Self::Cost {
-        // Calcolare la distanza euclidiana dagli aminoacidi H non consecutivi e sottrai per gli aminoacidi
-        0.0.into()
+    fn heuristic(&self, state: &Self::State) -> Self::Cost {
+        // Calcolare la distanza euclidiana dagli aminoacidi H non consecutivi e sottrai per gli aminoacidi H presenti
+        let mut cost = 0.0;
+
+        for (i, a) in state.index.iter().zip(self.aminoacids.iter()) {
+            if *a == AminoAcid::H {
+                let amin = &state.protein[*i];
+                let mut min_distrance = f64::INFINITY;
+                for (j, b) in state.index.iter().zip(self.aminoacids.iter()) {
+                    if i != j && *b == AminoAcid::H {
+                        // calcola la distanza euclidiana e aggiungila al costo
+                        let other_amin = &state.protein[*j];
+                        let distance = ((amin.x - other_amin.x).pow(2)
+                            + (amin.y - other_amin.y).pow(2))
+                            as f64;
+                        let distance = distance.sqrt();
+                        if distance < min_distrance {
+                            min_distrance = distance;
+                        }
+                    }
+                }
+                if min_distrance.is_finite() {
+                    cost += min_distrance;
+                }
+            }
+        }
+
+        for aminoacid in self.aminoacids.iter().skip(state.index.len()) {
+            if *aminoacid != AminoAcid::H {
+                cost += 2.0;
+            }
+        }
+
+        (cost - self.h_numer as f64).into()
     }
 }
 
 impl StateExplorerProblem for ProteinFolding {}
 
-fn main() {
-    let problem = ProteinFolding::new(vec![
-        AminoAcid::P,
-        AminoAcid::H,
-        AminoAcid::H,
-        AminoAcid::P,
-        AminoAcid::H,
-        AminoAcid::P,
-        AminoAcid::P,
-        AminoAcid::H,
-        AminoAcid::P,
-    ]);
+fn run_example<B: FrontierBackend<ProteinFolding> + std::fmt::Debug>(protein: &Vec<AminoAcid>) {
+    let problem = ProteinFolding::new(protein.clone());
 
-    let mut resolver = MinCostExplorer::new(problem);
-
+    let mut resolver = Explorer::<ProteinFolding, B>::new(problem);
     let init_state = Board::init_state();
 
     let r = resolver.search(init_state);
+    println!("{}", r)
+}
 
+type MinCost = MinCostBackend<ProteinFolding>;
+type DFS = StackBackend<ProteinFolding>;
+type BFS = DequeBackend<ProteinFolding>;
+type AStar = AStarBackend<ProteinFolding>;
+type BestFirst = BestFirstBackend<ProteinFolding>;
+
+fn main() {
+    let protein = vec![
+        AminoAcid::P,
+        AminoAcid::H,
+        AminoAcid::H,
+        AminoAcid::P,
+        AminoAcid::H,
+        AminoAcid::P,
+        AminoAcid::P,
+        AminoAcid::H,
+        AminoAcid::P,
+    ];
+
+    println!("MinCost:");
+    run_example::<MinCost>(&protein);
+    println!("BFS:");
+    run_example::<BFS>(&protein);
+    println!("DFS:");
+    run_example::<DFS>(&protein);
+    println!("AStar:");
+    run_example::<AStar>(&protein);
+    println!("BestFirst:");
+    run_example::<BestFirst>(&protein);
+    println!("Iterative:");
+    let problem = ProteinFolding::new(protein.clone());
+
+    let mut resolver = Explorer::<ProteinFolding, DFS>::new(problem);
+    let init_state = Board::init_state();
+
+    let r = resolver.iterative_search(init_state, 300);
     println!("{}", r)
 }
