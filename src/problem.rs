@@ -1,10 +1,10 @@
 use rand::Rng;
-use rand_distr::num_traits::Signed;
+use rand_distr::num_traits::Num;
 
 pub trait Problem {
     type State;
     type Action;
-    type Cost: Default + Copy + Ord + Signed + Into<f64>;
+    type Cost: Default + Copy + Ord + Num;
 
     fn executable_actions(&self, state: &Self::State) -> impl Iterator<Item = Self::Action>;
     fn result(&self, state: &Self::State, action: &Self::Action) -> (Self::State, Self::Cost);

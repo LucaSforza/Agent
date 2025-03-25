@@ -1,0 +1,277 @@
+# Protein Folding
+
+Per formulare questo problema mi ero soffermato a ragionare su cos'è il costo e sul cos'è l'azione
+per questo problema.
+
+Ho subito notato che un aminoacido H può fare al piu' due connessioni. Ma il problema è che quando
+piazziamo un aminoacido H non possiamo sapere finché non abbiamo costruito la soluzione completa
+se quell'aminoacido ci contribuirà tanto o poco per la massimizzazione dei contatti.
+
+Quindi l'idea per la formulazione del problema è: Piazza il primo aminoacido sulla posizione (0,0) e questo sarà lo stato iniziale. Alle prossime iterazioni piazza il prossimo aminoacido verso una direzione (sopra, sotto, sinistra, destra) che sia legale (ovvero evitando che due aminoacidi finiscano sulla stessa posizione).
+
+Il costo delle azioni è sempre 1, tranne per l'azione che conclude la proteina. In quel caso oltre al valore costante di ogni azione viene aggiunto anche un valore di "fitness" della soluzione.
+Questo valore viene calcolato nel seguente modo: (massimo numero di contatti possibili) - (numero effettivo di contatti). Il numero massimo di contatti possibili sarebbe il numero di aminoacidi H diviso 2 (il miglior caso sarebbe quando tutte le H combacino).
+
+Le azioni quindi sono la DIREZIONE in cui deve essere piazzato il prossimo aminoacido.
+Dalle direzioni si può ricostruire tutta la forma della proteina e calcolarne l'energia.
+
+## Modellazione del problema
+
+```rust
+pub struct ProteinFolding {
+    aminoacids: Vec<AminoAcid>, // len is n
+    h_numer: u32,
+}
+```
+Questra struttura rappresenta il mio problema. Mi salvo in cache anche il numero di proteine H (mi servirà piu' avanti).
+
+```rust
+pub struct Board {
+    protein: Graph<Pos, Direction, Undirected, u32>,
+    index: Vec<NodeIndex>,
+}
+```
+
+Questo è lo stato del problema. Per risparmiare memoria non ho optato per una matrice, ma invece per un grafo usando il crate `petgraph`. Il grafo che uso utilizza le liste di adiacenza come struttura dati.
+
+Mi tengo anche un vettore `index` dove nell'i-esima posizione contiene l'indice all'interno della struttura di adiagenza dove è memoriazzato l'i-esimo aminoacido. Un aminoacio è rappresentato semplicemente come la sua posizione e gli archi sono la direzione (in realtà questo dato negli archi non lo uso mai, gli archi mi servono solo a capire se due aminoacidi sono adicenti).
+
+Nello stato non mi serve tenermi anche quale aminoacido si trova in una certa posizione. Se voglio quale aminoacido in quale posizione si trova allora mi basta conoscere la sua posizione dal vettore `aminoacids` dentro la struttura `ProteinFolder` e usare il vettore `index` per recuperare l'indice all'interno della lista di adiacenza.
+
+## Azioni possibili
+
+```rust
+fn executable_actions(&self, state: &Self::State) -> impl Iterator<Item = Self::Action> {
+        let last_aminoacid;
+
+        last_aminoacid = state.get_last_aminoacid();
+
+        let mut actions = Vec::with_capacity(4);
+
+        for dir in vec![
+            Direction::Left,
+            Direction::Down,
+            Direction::Up,
+            Direction::Right,
+        ] {
+            if state.suitable(&last_aminoacid.clone_move(dir)) {
+                actions.push(dir);
+            }
+        }
+
+        actions.into_iter()
+    }
+```
+
+Le azioni eseguibili sono semplicemente tutte le direzioni che informano dove deve essere piazzato
+il prossimo aminoacido tale che non infrangano i requisiti (descritti nel metodo `suitable`).
+
+## Goal
+
+Il goal è semplicemente quando ho piazzato tutti gli aminoacidi sulla griglia.
+
+## Euristica
+
+```rust
+fn heuristic(&self, state: &Self::State) -> Self::Cost {
+        // Calcolare la distanza euclidiana dagli aminoacidi H non consecutivi e sottrai per gli aminoacidi H presenti
+        let mut cost = 0.0;
+
+        for (i, a) in state.index.iter().zip(self.aminoacids.iter()) {
+            // se l'aminoacido è H allora controllo la distanza minima rispetto ad un altro aminoacido H che non sia adiacente
+            if *a == AminoAcid::H {
+                let amin = &state.protein[*i];
+                let mut min_distrance = f64::INFINITY;
+                for (j, b) in state.index.iter().zip(self.aminoacids.iter()) {
+                    if i != j && *b == AminoAcid::H && state.find_edge_undirected(*i, *j).is_none()
+                    {
+                        // calcola la distanza euclidiana e aggiungila al costo
+                        let other_amin = &state.protein[*j];
+                        let distance = ((amin.x - other_amin.x).pow(2)
+                            + (amin.y - other_amin.y).pow(2))
+                            as f64;
+                        let distance = distance.sqrt();
+                        if distance < min_distrance {
+                            min_distrance = distance;
+                        }
+                    }
+                }
+                // se l'ho trovato lo aggiungo al costo
+                if min_distrance.is_finite() {
+                    cost += min_distrance;
+                }
+            }
+        }
+
+        let mut cost = cost.floor() as <ProteinFolding as Problem>::Cost;
+
+        let mut h_numer = self.h_numer;
+
+        // gestisci gli aminoacidi mancanti
+        for aminoacid in self.aminoacids.iter().skip(state.index.len()) {
+            // se un aminoacido è H allora toglilo dalla conta dei aminoacidi da sottrarre
+            if *aminoacid == AminoAcid::H {
+                h_numer -= 1;
+            }
+            // per ogni aminoacido che non ho ancora posizionato dovrò pagare 1
+            cost += 1;
+        }
+
+        // sottraggo al costo il numero di H posizionati
+        // questo perché vorrei che la soluzione ottima abbia 0 come euristica.
+        // Se ogni H è stato posizionato con successo allora le loro distanze euclidiane sono 1
+        // vengono sommate al costo e poi sottratte qua.
+        cost - h_numer
+    }
+```
+
+L'idea dell'euristica è quella di dividerla in due parti:
+La prima è di considerare gli aminoacidi che ho già piazzato e quelli che non ho piazzato.
+
+Per quelli che ho piazzato ignoro gli aminoacidi P, invece gli H trovo la distanza euclidiana
+minima rispetto ad un altro H che non sia adiacente e aggiungo queste distanze al valore finale dell'euristica.
+
+Questo perché voglio penalizzare stati in cui gli aminoacidi H sono troppo lontani tra di loro.
+
+La soluzione migliore di tutte dovrebbe essere quella in cui l'euristica vale 0, perciò sottraggo al valore dell'euristica il numero di H nella proteina. Così facendo se tutte le distanze minime erano 1 allora l'euristica varrà 0.
+
+Questo però solo se ho posizionato tutti gli aminoacidi, ma potrei avere ancora degli aminoacidi da piazzare. Ogni passo ha costo almeno 1 quindi per ognuno degli aminoacidi che non ho piazzato sommo 1 al risultato.
+
+## Conclusione
+
+Vorrei concludere mostrando come si comporta questa modellazione.
+
+I test mostrati fanno affidamento alla proteina: PHHPHPPHP, mostrata come esempio nel testo dell'esercizio.
+
+Il risultato ottimo è -2.
+
+### MinCost
+
+```
+MinCost:
+actions: Some([Up, Right, Down, Right, Right, Up, Left, Up])
+time: 3.686246ms
+iterations: 1241
+max frontier size: 2210
+
+    P  
+    |  
+H-H H-P
+| |   |
+P P-H-P
+
+Energy: -2
+```
+
+Min Cost trova sempre l'ottimo
+
+### BFS
+
+```
+BFS:
+actions: Some([Left, Left, Left, Left, Left, Left, Left, Left])
+time: 12.3216ms
+iterations: 3390
+max frontier size: 5916
+
+P-H-P-P-H-P-H-H-P
+
+Energy: 0
+```
+
+BFS non trova l'ottimo, questo perché all'ultima iterazione mette tutti gli stati finali in frontiera, ma per via della regola della BFS prende il primo che ha inserito (First In Firts Out).
+Quindi dato che la prima mossa che l'algoritmo considera è andare a sinistra (vedere funzione `executable_actions`) allora chiaramente il primo che ha inserito è la soluzione dove piazza aminoacidi sempre a sinistra.
+
+### DFS
+
+```
+MinCost:
+actions: Some([Up, Right, Down, Right, Right, Up, Left, Up])
+time: 3.686246ms
+iterations: 1241
+max frontier size: 2210
+
+    P  
+    |  
+H-H H-P
+| |   |
+P P-H-P
+
+Energy: -2
+BFS:
+actions: Some([Left, Left, Left, Left, Left, Left, Left, Left])
+time: 12.3216ms
+iterations: 3390
+max frontier size: 5916
+
+P-H-P-P-H-P-H-H-P
+
+Energy: 0
+DFS:
+actions: Some([Right, Right, Right, Right, Right, Right, Right, Right])
+time: 37.877µs
+iterations: 9
+max frontier size: 18
+
+P-H-H-P-H-P-P-H-P
+
+Energy: 0
+```
+
+Ovviamente DFS non trova l'ottimo generalmente, ma dato che segue la regola Last In First Out è interessante notare come la direzione che sceglie sempre è quella di andare a destra che è esattamente l'ultima direzione che viene considerata nella funzione `exectuable_actions`.
+
+### AStar
+
+```
+AStar:
+actions: Some([Left, Left, Up, Right, Right, Up, Left, Left])
+time: 203.489µs
+iterations: 72
+max frontier size: 127
+
+P-H-P
+    |
+P-H-P
+|    
+H-H-P
+
+Energy: -2
+```
+
+A* trova sempre l'ottimo quando l'euristica è amissibile e consistente.
+
+### BestFirst
+
+```
+BestFirst:
+actions: Some([Left, Left, Down, Right, Down, Right, Up, Right])
+time: 63.171µs
+iterations: 16
+max frontier size: 27
+
+H-H-P  
+|      
+P-H H-P
+  | |  
+  P-P  
+
+Energy: -2
+```
+
+Generalmente non trova l'ottimo.
+
+### Iterative
+
+```
+Iterative:
+actions: Some([Right, Right, Right, Right, Right, Right, Right, Right])
+time: 4.731765ms
+iterations: 5280
+max frontier size: 18
+
+P-H-H-P-H-P-P-H-P
+
+Energy: 0
+```
+
+Ha lo stesso problema della DFS.

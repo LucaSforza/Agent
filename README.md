@@ -49,6 +49,11 @@ Simulated Annealing:
 Per maggiori dettagli degli output e dell'implementazione del problema e degli algoritmi
 vedere [a_4_1.md](a_4_1.md).
 
+# Protein Folding
+
+Nella cartella esempi è presente come esempio il problema del Protein Folding.
+Per maggiori informazioni cliccare [qui](examples/protein_folding/README.md).
+
 ## Esplorazione di Spazi degli stati
 
 Per eseguire gli esempi:

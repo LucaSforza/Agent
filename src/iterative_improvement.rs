@@ -276,7 +276,7 @@ use libm::exp;
 
 impl<R, P> ImprovingAlgorithm<P> for SimulatedAnnealing<R>
 where
-    P: IterativeImprovingProblem<Cost: Sub<Output = P::Cost>>,
+    P: IterativeImprovingProblem<Cost: Sub<Output = P::Cost> + Into<f64> + Signed>,
     R: Rng,
 {
     fn attempt(&mut self, problem: &P) -> AttemptResult<P> {
