@@ -34,6 +34,7 @@ Però mi tengo anche un vettore `index` dove nell'i-esima posizione contiene l'i
 
 Nello stato non mi serve tenermi anche quale aminoacido si trova in una certa posizione. Se voglio quale aminoacido in quale posizione si trova allora mi basta conoscere la sua posizione dal vettore `aminoacids` dentro la struttura `ProteinFolder` e usare il vettore `index` per recuperare l'indice all'interno della lista di adiacenza.
 
+
 ## Goal
 
 Il goal è semplicemente quando ho piazzato tutti gli aminoacidi sulla griglia.

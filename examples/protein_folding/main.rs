@@ -13,8 +13,8 @@ use formulation::{AminoAcid, Board, Direction, ProteinFolding};
 fn run_example<B: FrontierBackend<ProteinFolding> + std::fmt::Debug>(protein: &Vec<AminoAcid>) {
     let problem = ProteinFolding::new(protein.clone());
 
+    let init_state = Board::init_state(&problem);
     let mut resolver = Explorer::<ProteinFolding, B>::new(problem);
-    let init_state = Board::init_state();
 
     let r = resolver.search(init_state);
     println!("{}", r);
@@ -119,23 +119,23 @@ fn print_solution(protein: &Vec<AminoAcid>, solution: Vec<Direction>) {
 fn run_all(protein: &Vec<AminoAcid>) {
     println!("MinCost:");
     run_example::<MinCost>(protein);
-    println!("BFS:");
+    /*println!("BFS:");
     run_example::<BFS>(protein);
     println!("DFS:");
-    run_example::<DFS>(protein);
+    run_example::<DFS>(protein);*/
     println!("AStar:");
     run_example::<AStar>(protein);
     println!("BestFirst:");
     run_example::<BestFirst>(protein);
-    println!("Iterative:");
-    let problem = ProteinFolding::new(protein.clone());
+    /*println!("Iterative:");
+        let problem = ProteinFolding::new(protein.clone());
 
+    let init_state = Board::init_state(&problem);
     let mut resolver = Explorer::<ProteinFolding, DFS>::new(problem);
-    let init_state = Board::init_state();
 
     let r = resolver.iterative_search(init_state, 300);
     println!("{}", r);
-    print_solution(protein, r.actions.unwrap());
+    print_solution(protein, r.actions.unwrap()); */
 }
 
 fn main() {
@@ -152,14 +152,10 @@ fn main() {
     ];
 
     run_all(&protein);
-    /*
-    let protein = vec![
+    /* let protein = vec![
         AminoAcid::H,
-        AminoAcid::H,
-        AminoAcid::H,
-        AminoAcid::H,
-        AminoAcid::H,
-        AminoAcid::H,
+        AminoAcid::P,
+        AminoAcid::P,
         AminoAcid::H,
         AminoAcid::H,
     ];
