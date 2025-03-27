@@ -12,6 +12,9 @@ Quindi l'idea per la formulazione del problema è: Piazza il primo aminoacido su
 Il costo delle azioni è sempre 1, tranne per l'azione che conclude la proteina. In quel caso oltre al valore costante di ogni azione viene aggiunto anche un valore di "fitness" della soluzione.
 Questo valore viene calcolato nel seguente modo: (massimo numero di contatti possibili) - (numero effettivo di contatti). Il numero massimo di contatti possibili sarebbe il numero di aminoacidi H diviso 2 (il miglior caso sarebbe quando tutte le H combacino).
 
+In questo modo finché non raggiungo profondita N dell'albero di esplorazione io posso enumerare tutte le conformazioni legali che può avere una proteina con la sequenza di aminoacidi in input.
+Solo però arrivato a profondità N che aggiungo al costo la fitness e in questo modo MinCost mi prenderà la soluzione che minimizza il costo, ovvero che minimezza la fitness ovvero che mi massimizza i contatti.
+
 Le azioni quindi sono la DIREZIONE in cui deve essere piazzato il prossimo aminoacido.
 Dalle direzioni si può ricostruire tutta la forma della proteina e calcolarne l'energia.
 
@@ -185,28 +188,6 @@ Quindi dato che la prima mossa che l'algoritmo considera è andare a sinistra (v
 ### DFS
 
 ```
-MinCost:
-actions: Some([Up, Right, Down, Right, Right, Up, Left, Up])
-time: 3.686246ms
-iterations: 1241
-max frontier size: 2210
-
-    P  
-    |  
-H-H H-P
-| |   |
-P P-H-P
-
-Energy: -2
-BFS:
-actions: Some([Left, Left, Left, Left, Left, Left, Left, Left])
-time: 12.3216ms
-iterations: 3390
-max frontier size: 5916
-
-P-H-P-P-H-P-H-H-P
-
-Energy: 0
 DFS:
 actions: Some([Right, Right, Right, Right, Right, Right, Right, Right])
 time: 37.877µs
