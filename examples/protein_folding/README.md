@@ -153,9 +153,9 @@ Il risultato ottimo è -6. (se l'implementazione è corretta... comunque ho prov
 ```
 MinCost:
 actions: Some([Up, Right, Down, Right, Down, Left, Left, Left, Left, Left, Up, Right, Right, Up, Up])
-time: 2.15780382s
-iterations: 397161
-max frontier size: 674710
+time: 7.162650678s
+iterations: 942712
+max frontier size: 1604149
 
     P      
     |      
@@ -211,20 +211,18 @@ Ovviamente DFS non trova l'ottimo generalmente, ma dato che segue la regola Last
 
 ```
 AStar:
-actions: Some([Up, Left, Down, Left, Down, Right, Right, Right, Down, Right, Up, Up, Left, Up, Up])
-time: 558.764333ms
-iterations: 134797
-max frontier size: 216319
+actions: Some([Up, Right, Down, Right, Down, Left, Left, Left, Left, Left, Up, Right, Right, Up, Up])
+time: 6.884629498s
+iterations: 942712
+max frontier size: 1604149
 
-      P  
-      |  
-  P-H H  
-  | | |  
-P-H H H-P
-|       |
-P-H-H-H P
-      | |
-      P-P
+    P      
+    |      
+    H H-P  
+    | | |  
+P-P-H H H-P
+|         |
+P-P-H-H-H-P
 
 Energy: -6
 ```
@@ -236,7 +234,7 @@ A* trova sempre l'ottimo quando l'euristica è consistente.
 ```
 BestFirst:
 actions: Some([Up, Up, Right, Down, Right, Down, Left, Down, Down, Left, Left, Up, Up, Up, Up])
-time: 23.327499ms
+time: 23.357343ms
 iterations: 6840
 max frontier size: 11056
 
@@ -253,7 +251,8 @@ P-P-P
 Energy: -3
 ```
 
-Generalmente non trova l'ottimo.
+Generalmente non trova l'ottimo. Però è curioso notare come l'euristica cerchi di raggruppare le H il piu possibile. Dato
+che la mia euristica si basa sulle distanze euclidiane delle H.
 
 ### Iterative
 
