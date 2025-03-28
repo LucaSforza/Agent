@@ -138,18 +138,12 @@ fn run_all(protein: &Vec<AminoAcid>) {
     print_solution(protein, r.actions.unwrap());
 }
 
+use AminoAcid::*;
+
 fn main() {
-    let protein = vec![
-        AminoAcid::P,
-        AminoAcid::H,
-        AminoAcid::H,
-        AminoAcid::P,
-        AminoAcid::H,
-        AminoAcid::P,
-        AminoAcid::P,
-        AminoAcid::H,
-        AminoAcid::P,
-    ];
+    let protein = vec![P, H, H, P, H, P, P, H, P];
+
+    let protein = vec![H, H, P, H, P, P, H, H, H, P, P, P, P, H, H, P];
 
     run_all(&protein);
 }

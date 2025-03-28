@@ -135,6 +135,10 @@ impl Board {
                         if i != j
                             && self.protein[*other_index] == neighbor_pos
                             && problem.aminoacids[j] == AminoAcid::H
+                            && self
+                                .protein
+                                .find_edge_undirected(*index, *other_index)
+                                .is_none()
                         {
                             total_contacts += 1;
                         }
@@ -143,7 +147,8 @@ impl Board {
             }
         }
 
-        total_contacts / 2 // Each contact is counted twice, so divide by 2
+        let total_contacts = total_contacts / 2;
+        total_contacts // Each contact is counted twice, so divide by 2
     }
 
     fn add_pos(
