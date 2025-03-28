@@ -76,7 +76,7 @@ Il goal è semplicemente quando ho piazzato tutti gli aminoacidi sulla griglia.
 ## Euristica
 
 ```rust
-fn heuristic(&self, state: &Self::State) -> Self::Cost {
+    fn heuristic(&self, state: &Self::State) -> Self::Cost {
         // Calcolare la distanza euclidiana dagli aminoacidi H non consecutivi e sottrai per gli aminoacidi H presenti
         let mut cost = 0.0;
 
@@ -106,25 +106,21 @@ fn heuristic(&self, state: &Self::State) -> Self::Cost {
             }
         }
 
-        let mut cost = cost.floor() as <ProteinFolding as Problem>::Cost;
+        // le distanze sono duplicate, divido per 2
+        let mut cost = (cost / 2.0).floor() as <ProteinFolding as Problem>::Cost;
 
-        let mut h_numer = self.h_numer;
-
-        // gestisci gli aminoacidi mancanti
-        for aminoacid in self.aminoacids.iter().skip(state.index.len()) {
-            // se un aminoacido è H allora toglilo dalla conta dei aminoacidi da sottrarre
-            if *aminoacid == AminoAcid::H {
-                h_numer -= 1;
-            }
-            // per ogni aminoacido che non ho ancora posizionato dovrò pagare 1
-            cost += 1;
-        }
+        // aggiungo al costo tutte le H non ancora posizionate, cosi quando sottraggo il risultato è consistente
+        cost += (self
+            .aminoacids
+            .iter()
+            .filter(|x| **x == AminoAcid::H)
+            .count()) as u32;
 
         // sottraggo al costo il numero di H posizionati
         // questo perché vorrei che la soluzione ottima abbia 0 come euristica.
         // Se ogni H è stato posizionato con successo allora le loro distanze euclidiane sono 1
         // vengono sommate al costo e poi sottratte qua.
-        cost - h_numer
+        cost - self.h_numer
     }
 ```
 
@@ -138,32 +134,34 @@ Questo perché voglio penalizzare stati in cui gli aminoacidi H sono troppo lont
 
 La soluzione migliore di tutte dovrebbe essere quella in cui l'euristica vale 0, perciò sottraggo al valore dell'euristica il numero di H nella proteina. Così facendo se tutte le distanze minime erano 1 allora l'euristica varrà 0.
 
-Questo però solo se ho posizionato tutti gli aminoacidi, ma potrei avere ancora degli aminoacidi da piazzare. Ogni passo ha costo almeno 1 quindi per ognuno degli aminoacidi che non ho piazzato sommo 1 al risultato.
+Questo però solo se ho posizionato tutti gli aminoacidi, ma potrei avere ancora degli aminoacidi H da piazzare che potrebbero ridurre il costo. Quindi per fare l'euristica dovrei essere ottimista e quindi assumo che troverò la posizione perfetta per loro e quindi con distanza euclidiana ad 1.
 
 ## Conclusione
 
 Vorrei concludere mostrando come si comporta questa modellazione.
 
-I test mostrati fanno affidamento alla proteina: PHHPHPPHP, mostrata come esempio nel testo dell'esercizio.
+I test mostrati fanno affidamento alla proteina: HHPHPPHHHPPPPHHP
 
-Il risultato ottimo è -2.
+Il risultato ottimo è -6. (se l'implementazione è corretta...)
 
 ### MinCost
 
 ```
 MinCost:
-actions: Some([Up, Right, Down, Right, Right, Up, Left, Up])
-time: 3.686246ms
-iterations: 1241
-max frontier size: 2210
+actions: Some([Up, Right, Down, Right, Down, Left, Left, Left, Left, Left, Up, Right, Right, Up, Up])
+time: 2.15780382s
+iterations: 397161
+max frontier size: 674710
 
-    P  
-    |  
-H-H H-P
-| |   |
-P P-H-P
+    P      
+    |      
+    H H-P  
+    | | |  
+P-P-H H H-P
+|         |
+P-P-H-H-H-P
 
-Energy: -2
+Energy: -6
 ```
 
 Min Cost trova sempre l'ottimo
@@ -172,71 +170,83 @@ Min Cost trova sempre l'ottimo
 
 ```
 BFS:
-actions: Some([Left, Left, Left, Left, Left, Left, Left, Left])
-time: 12.3216ms
-iterations: 3390
-max frontier size: 5916
+actions: Some([Up, Left, Left, Left, Left, Left, Left, Left, Left, Left, Left, Left, Left, Left, Left])
+time: 5.889066771s
+iterations: 942712
+max frontier size: 1604149
 
-P-H-P-P-H-P-H-H-P
+P-H-H-P-P-P-P-H-H-H-P-P-H-P-H
+                            |
+                            H
 
 Energy: 0
 ```
 
 BFS non trova l'ottimo, questo perché all'ultima iterazione mette tutti gli stati finali in frontiera, ma per via della regola della BFS prende il primo che ha inserito (First In Firts Out).
-Quindi dato che la prima mossa che l'algoritmo considera è andare a sinistra (vedere funzione `executable_actions`) allora chiaramente il primo che ha inserito è la soluzione dove piazza aminoacidi sempre a sinistra.
+Quindi dato che la prima mossa che l'algoritmo considera è andare a sinistra (vedere funzione `executable_actions`) allora chiaramente il primo che ha inserito è la soluzione dove piazza aminoacidi sempre a sinistra (apparte il primo aminoacido che viene posizionato sempre in alto).
 
 ### DFS
 
 ```
 DFS:
-actions: Some([Right, Right, Right, Right, Right, Right, Right, Right])
-time: 37.877µs
-iterations: 9
-max frontier size: 18
+actions: Some([Up, Right, Right, Right, Right, Right, Right, Right, Right, Right, Right, Right, Right, Right, Right])
+time: 116.444µs
+iterations: 16
+max frontier size: 29
 
-P-H-H-P-H-P-P-H-P
+H-P-H-P-P-H-H-H-P-P-P-P-H-H-P
+|                            
+H                            
 
 Energy: 0
 ```
 
-Ovviamente DFS non trova l'ottimo generalmente, ma dato che segue la regola Last In First Out è interessante notare come la direzione che sceglie sempre è quella di andare a destra che è esattamente l'ultima direzione che viene considerata nella funzione `exectuable_actions`.
+Ovviamente DFS non trova l'ottimo generalmente, ma dato che segue la regola Last In First Out è interessante notare come la direzione che sceglie sempre è quella di andare a destra che è esattamente l'ultima direzione che viene considerata nella funzione `exectuable_actions`. (tranne il primo ovviamente)
 
 ### AStar
 
 ```
 AStar:
-actions: Some([Left, Left, Up, Right, Right, Up, Left, Left])
-time: 203.489µs
-iterations: 72
-max frontier size: 127
+actions: Some([Up, Left, Down, Left, Down, Right, Right, Right, Down, Right, Up, Up, Left, Up, Up])
+time: 558.764333ms
+iterations: 134797
+max frontier size: 216319
 
-P-H-P
-    |
-P-H-P
-|    
-H-H-P
+      P  
+      |  
+  P-H H  
+  | | |  
+P-H H H-P
+|       |
+P-H-H-H P
+      | |
+      P-P
 
-Energy: -2
+Energy: -6
 ```
 
-A* trova sempre l'ottimo quando l'euristica è amissibile e consistente.
+A* trova sempre l'ottimo quando l'euristica è consistente.
 
 ### BestFirst
 
 ```
 BestFirst:
-actions: Some([Left, Left, Down, Right, Down, Right, Up, Right])
-time: 63.171µs
-iterations: 16
-max frontier size: 27
+actions: Some([Up, Up, Right, Down, Right, Down, Left, Down, Down, Left, Left, Up, Up, Up, Up])
+time: 23.327499ms
+iterations: 6840
+max frontier size: 11056
 
-H-H-P  
-|      
-P-H H-P
-  | |  
-  P-P  
+P P-H  
+| | |  
+H H P-P
+| |   |
+H H H-H
+|   |  
+P   H  
+|   |  
+P-P-P  
 
-Energy: -2
+Energy: -3
 ```
 
 Generalmente non trova l'ottimo.
@@ -245,12 +255,14 @@ Generalmente non trova l'ottimo.
 
 ```
 Iterative:
-actions: Some([Right, Right, Right, Right, Right, Right, Right, Right])
-time: 4.731765ms
-iterations: 5280
-max frontier size: 18
+actions: Some([Up, Right, Right, Right, Right, Right, Right, Right, Right, Right, Right, Right, Right, Right, Right])
+time: 2.716000327s
+iterations: 1495507
+max frontier size: 29
 
-P-H-H-P-H-P-P-H-P
+H-P-H-P-P-H-H-H-P-P-P-P-H-H-P
+|                            
+H                            
 
 Energy: 0
 ```

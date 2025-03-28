@@ -141,7 +141,7 @@ fn run_all(protein: &Vec<AminoAcid>) {
 use AminoAcid::*;
 
 fn main() {
-    let protein = vec![P, H, H, P, H, P, P, H, P];
+    //let protein = vec![P, H, H, P, H, P, P, H, P];
 
     let protein = vec![H, H, P, H, P, P, H, H, H, P, P, P, P, H, H, P];
 
