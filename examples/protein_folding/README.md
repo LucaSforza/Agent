@@ -3,17 +3,16 @@
 Per formulare questo problema mi ero soffermato a ragionare su cos'è il costo e sul cos'è l'azione
 per questo problema.
 
-Ho subito notato che un aminoacido H può fare al piu' due connessioni. Ma il problema è che quando
-piazziamo un aminoacido H non possiamo sapere finché non abbiamo costruito la soluzione completa
+Il problema è che quando piazziamo un aminoacido H non possiamo sapere finché non abbiamo costruito la soluzione completa
 se quell'aminoacido ci contribuirà tanto o poco per la massimizzazione dei contatti.
 
 Quindi l'idea per la formulazione del problema è: Piazza il primo aminoacido sulla posizione (0,0) e questo sarà lo stato iniziale. Alle prossime iterazioni piazza il prossimo aminoacido verso una direzione (sopra, sotto, sinistra, destra) che sia legale (ovvero evitando che due aminoacidi finiscano sulla stessa posizione).
 
 Il costo delle azioni è sempre 1, tranne per l'azione che conclude la proteina. In quel caso oltre al valore costante di ogni azione viene aggiunto anche un valore di "fitness" della soluzione.
-Questo valore viene calcolato nel seguente modo: (massimo numero di contatti possibili) - (numero effettivo di contatti). Il numero massimo di contatti possibili sarebbe il numero di aminoacidi H diviso 2 (il miglior caso sarebbe quando tutte le H combacino).
+Questo valore viene calcolato nel seguente modo: (massimo numero di contatti possibili) - (numero effettivo di contatti) + 1. Il numero massimo di contatti possibili sarebbe il numero di aminoacidi H diviso 2 (il miglior caso sarebbe quando tutte le H combacino). Ho sommato anche '1' perché voglio essere sicuro che gli stati goal siano tutti in frontiera prima di prendere il minimo usando MinCost. Perché appunto non posso essere sicuro che la mia soluzione sia ottima se prima non calcolo le altre.
 
 In questo modo finché non raggiungo profondita N dell'albero di esplorazione io posso enumerare tutte le conformazioni legali che può avere una proteina con la sequenza di aminoacidi in input.
-Solo però arrivato a profondità N che aggiungo al costo la fitness e in questo modo MinCost mi prenderà la soluzione che minimizza il costo, ovvero che minimezza la fitness ovvero che mi massimizza i contatti.
+Solo però arrivato a profondità N che aggiungo al costo la fitness e in questo modo MinCost mi prenderà la soluzione che minimizza il costo, ovvero che minimezza la fitness, ovvero che mi massimizza i contatti.
 
 Le azioni quindi sono la DIREZIONE in cui deve essere piazzato il prossimo aminoacido.
 Dalle direzioni si può ricostruire tutta la forma della proteina e calcolarne l'energia.
@@ -44,7 +43,12 @@ Nello stato non mi serve tenermi anche quale aminoacido si trova in una certa po
 ## Azioni possibili
 
 ```rust
-fn executable_actions(&self, state: &Self::State) -> impl Iterator<Item = Self::Action> {
+    fn executable_actions(&self, state: &Self::State) -> impl Iterator<Item = Self::Action> {
+        if state.index.len() == 1 {
+            // non importa dove vado la prima volta
+            return vec![Direction::Up].into_iter();
+        }
+
         let last_aminoacid;
 
         last_aminoacid = state.get_last_aminoacid();
@@ -142,7 +146,7 @@ Vorrei concludere mostrando come si comporta questa modellazione.
 
 I test mostrati fanno affidamento alla proteina: HHPHPPHHHPPPPHHP
 
-Il risultato ottimo è -6. (se l'implementazione è corretta...)
+Il risultato ottimo è -6. (se l'implementazione è corretta... comunque ho provato con l'esempio sulla traccia e trova lo stesso risultato).
 
 ### MinCost
 
