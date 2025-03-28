@@ -179,7 +179,7 @@ impl Board {
             if self.index.len() == problem.aminoacids.len() {
                 let max_contacts = problem.h_numer / 2;
                 let contacts = self.contacts(problem);
-                final_cost = max_contacts - contacts;
+                final_cost = max_contacts - contacts + 1; // aggiungo 1 per accertarmi di aver considerato tutti gli stati non ancora completati
             } else {
                 final_cost = 0;
             }
@@ -230,6 +230,11 @@ impl Problem for ProteinFolding {
     type Cost = u32;
 
     fn executable_actions(&self, state: &Self::State) -> impl Iterator<Item = Self::Action> {
+        if state.index.len() == 1 {
+            // non importa dove vado la prima volta
+            return vec![Direction::Up].into_iter();
+        }
+
         let last_aminoacid;
 
         last_aminoacid = state.get_last_aminoacid();
@@ -295,25 +300,21 @@ impl Utility for ProteinFolding {
             }
         }
 
-        let mut cost = cost.floor() as <ProteinFolding as Problem>::Cost;
+        // le distanze sono duplicate, divido per 2
+        let mut cost = (cost / 2.0).floor() as <ProteinFolding as Problem>::Cost;
 
-        let mut h_numer = self.h_numer;
-
-        // gestisci gli aminoacidi mancanti
-        for aminoacid in self.aminoacids.iter().skip(state.index.len()) {
-            // se un aminoacido è H allora toglilo dalla conta dei aminoacidi da sottrarre
-            if *aminoacid == AminoAcid::H {
-                h_numer -= 1;
-            }
-            // per ogni aminoacido che non ho ancora posizionato dovrò pagare 1
-            cost += 1;
-        }
+        // aggiungo al costo tutte le H non ancora posizionate, cosi quando sottraggo il risultato è consistente
+        cost += (self
+            .aminoacids
+            .iter()
+            .filter(|x| **x == AminoAcid::H)
+            .count()) as u32;
 
         // sottraggo al costo il numero di H posizionati
         // questo perché vorrei che la soluzione ottima abbia 0 come euristica.
         // Se ogni H è stato posizionato con successo allora le loro distanze euclidiane sono 1
         // vengono sommate al costo e poi sottratte qua.
-        cost - h_numer
+        cost - self.h_numer
     }
 }
 
