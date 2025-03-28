@@ -147,7 +147,6 @@ impl Board {
             }
         }
 
-        let total_contacts = total_contacts / 2;
         total_contacts // Each contact is counted twice, so divide by 2
     }
 
@@ -177,9 +176,10 @@ impl Board {
 
             let final_cost;
             if self.index.len() == problem.aminoacids.len() {
-                let max_contacts = problem.h_numer / 2;
+                let max_contacts = problem.h_numer * 3;
                 let contacts = self.contacts(problem);
-                final_cost = max_contacts - contacts + 1; // aggiungo 1 per accertarmi di aver considerato tutti gli stati non ancora completati
+                assert!(max_contacts as i64 - contacts as i64 >= 0);
+                final_cost = max_contacts - contacts;
             } else {
                 final_cost = 0;
             }
