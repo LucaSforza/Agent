@@ -6,7 +6,7 @@ mod tests {
         explorer::{
             AStarExplorer, BFSExplorer, BestFirstGreedyExplorer, DFSExplorer, MinCostExplorer,
         },
-        problem::{Problem, StateExplorerProblem, Utility, WithSolution},
+        problem::{Problem, Utility, WithSolution},
     };
     // use frontier::DequeFrontier;
 
@@ -99,8 +99,9 @@ mod tests {
         type State = HouseState;
         type Action = Action;
         type Cost = OrderedFloat<f64>;
+        type ActionIterator = <Vec<Self::Action> as IntoIterator>::IntoIter;
 
-        fn executable_actions(&self, state: &Self::State) -> impl Iterator<Item = Self::Action> {
+        fn executable_actions(&self, state: &Self::State) -> Self::ActionIterator {
             let mut actions = Vec::with_capacity(6); // TODO: change this
             if self.is_goal(state) {
                 actions.push(Action::Nothing);
@@ -155,8 +156,6 @@ mod tests {
             state.where_dirty.is_empty()
         }
     }
-
-    impl StateExplorerProblem for CleanProblem {}
 
     #[test]
     fn test_vacuum_bfs() {

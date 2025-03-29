@@ -12,7 +12,7 @@ use crate::problem::*;
 
 pub trait FrontierBackend<P>: Default
 where
-    P: StateExplorerProblem,
+    P: Utility,
 {
     fn enqueue(&mut self, item: Rc<Node<P>>);
     fn dequeue(&mut self) -> Option<Rc<Node<P>>>;
@@ -21,7 +21,7 @@ where
 
 pub struct Frontier<P, Backend>
 where
-    P: StateExplorerProblem,
+    P: Utility,
     Backend: FrontierBackend<P>,
 {
     collection: Backend,
@@ -30,7 +30,7 @@ where
 
 impl<P, Backend> Frontier<P, Backend>
 where
-    P: StateExplorerProblem<State: Eq + Hash + Clone, Action: Clone>,
+    P: Utility<State: Eq + Hash + Clone, Action: Clone>,
     Backend: FrontierBackend<P>,
 {
     pub fn new() -> Self {
@@ -89,7 +89,7 @@ where
 
 impl<P, Backend> Debug for Frontier<P, Backend>
 where
-    P: StateExplorerProblem,
+    P: Utility,
     Backend: FrontierBackend<P> + Debug,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -101,7 +101,7 @@ pub type DequeBackend<P> = VecDeque<Rc<Node<P>>>;
 
 impl<P> FrontierBackend<P> for DequeBackend<P>
 where
-    P: StateExplorerProblem,
+    P: Utility,
 {
     fn dequeue(&mut self) -> Option<Rc<Node<P>>> {
         self.pop_front()
@@ -120,7 +120,7 @@ pub type StackBackend<P> = Vec<Rc<Node<P>>>;
 
 impl<P> FrontierBackend<P> for StackBackend<P>
 where
-    P: StateExplorerProblem,
+    P: Utility,
 {
     fn enqueue(&mut self, item: Rc<Node<P>>) {
         self.push(item);
@@ -137,7 +137,7 @@ where
 
 pub trait NodeCost<P>
 where
-    P: StateExplorerProblem,
+    P: Utility,
 {
     fn cost(node: &Node<P>) -> P::Cost;
 }
@@ -146,7 +146,7 @@ pub struct AStarPolicy {}
 
 impl<P> NodeCost<P> for AStarPolicy
 where
-    P: StateExplorerProblem<Action: Clone>,
+    P: Utility<Action: Clone>,
 {
     fn cost(node: &Node<P>) -> P::Cost {
         node.get_f_cost()
@@ -157,7 +157,7 @@ pub struct BestFirstPolicy {}
 
 impl<P> NodeCost<P> for BestFirstPolicy
 where
-    P: StateExplorerProblem<Action: Clone>,
+    P: Utility<Action: Clone>,
 {
     fn cost(node: &Node<P>) -> P::Cost {
         node.get_h_cost()
@@ -168,7 +168,7 @@ pub struct MinCostPolicy {}
 
 impl<P> NodeCost<P> for MinCostPolicy
 where
-    P: StateExplorerProblem<Action: Clone>,
+    P: Utility<Action: Clone>,
 {
     fn cost(node: &Node<P>) -> P::Cost {
         node.get_g_cost()
@@ -177,11 +177,11 @@ where
 
 pub struct NodeAndCost<P>(Rc<Node<P>>, Reverse<P::Cost>)
 where
-    P: StateExplorerProblem;
+    P: Utility;
 
 impl<P> NodeAndCost<P>
 where
-    P: StateExplorerProblem,
+    P: Utility,
 {
     pub fn new(node: Rc<Node<P>>, cost: P::Cost) -> Self {
         Self(node, Reverse(cost))
@@ -190,7 +190,7 @@ where
 
 impl<P> Ord for NodeAndCost<P>
 where
-    P: StateExplorerProblem,
+    P: Utility,
 {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.1.cmp(&other.1)
@@ -199,7 +199,7 @@ where
 
 impl<P> PartialOrd for NodeAndCost<P>
 where
-    P: StateExplorerProblem,
+    P: Utility,
 {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
@@ -208,18 +208,18 @@ where
 
 impl<P> PartialEq for NodeAndCost<P>
 where
-    P: StateExplorerProblem,
+    P: Utility,
 {
     fn eq(&self, other: &Self) -> bool {
         self.1 == other.1
     }
 }
 
-impl<P> Eq for NodeAndCost<P> where P: StateExplorerProblem {}
+impl<P> Eq for NodeAndCost<P> where P: Utility {}
 
 impl<P> Debug for NodeAndCost<P>
 where
-    P: StateExplorerProblem,
+    P: Utility,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.0.fmt(f)
@@ -228,7 +228,7 @@ where
 
 pub struct PriorityBackend<P, Policy>
 where
-    P: StateExplorerProblem,
+    P: Utility,
     Policy: NodeCost<P>,
 {
     collection: BinaryHeap<NodeAndCost<P>>,
@@ -237,7 +237,7 @@ where
 
 impl<P, Policy> Default for PriorityBackend<P, Policy>
 where
-    P: StateExplorerProblem,
+    P: Utility,
     Policy: NodeCost<P>,
 {
     fn default() -> Self {
@@ -250,7 +250,7 @@ where
 
 impl<P, Policy> FrontierBackend<P> for PriorityBackend<P, Policy>
 where
-    P: StateExplorerProblem,
+    P: Utility,
     Policy: NodeCost<P>,
 {
     fn enqueue(&mut self, item: Rc<Node<P>>) {
@@ -269,7 +269,7 @@ where
 
 impl<P, Policy> Debug for PriorityBackend<P, Policy>
 where
-    P: StateExplorerProblem<State: Debug, Action: Clone, Cost: Debug>,
+    P: Utility<State: Debug, Action: Clone, Cost: Debug>,
     Policy: NodeCost<P>,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

@@ -10,7 +10,7 @@ use crate::problem::*;
 #[derive(PartialEq, Eq)]
 pub struct Node<P>
 where
-    P: StateExplorerProblem,
+    P: Utility,
 {
     state: P::State,
     parent: Option<Rc<Node<P>>>,
@@ -23,7 +23,7 @@ where
 
 impl<P> Node<P>
 where
-    P: StateExplorerProblem<Action: Clone>,
+    P: Utility<Action: Clone>,
 {
     pub fn new(
         parent: Option<Rc<Node<P>>>,
@@ -101,7 +101,7 @@ where
 
 impl<P> Debug for Node<P>
 where
-    P: StateExplorerProblem<State: Debug, Action: Clone, Cost: Debug>,
+    P: Utility<State: Debug, Action: Clone, Cost: Debug>,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
@@ -124,7 +124,7 @@ where
 
 impl<P> std::hash::Hash for Node<P>
 where
-    P: StateExplorerProblem<State: Hash, Cost: Hash>,
+    P: Utility<State: Hash, Cost: Hash>,
 {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.state.hash(state);

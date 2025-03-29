@@ -1,6 +1,6 @@
 use std::ops::{Deref, DerefMut};
 
-use agent::problem::{Problem, StateExplorerProblem, Utility, WithSolution};
+use agent::problem::{Problem, Utility, WithSolution};
 use petgraph::graph::NodeIndex;
 
 #[derive(PartialEq, Eq, Clone)]
@@ -228,8 +228,9 @@ impl Problem for ProteinFolding {
     type State = Board;
     type Action = Direction;
     type Cost = u32;
+    type ActionIterator = <Vec<Self::Action> as IntoIterator>::IntoIter;
 
-    fn executable_actions(&self, state: &Self::State) -> impl Iterator<Item = Self::Action> {
+    fn executable_actions(&self, state: &Self::State) -> Self::ActionIterator {
         if state.index.len() == 1 {
             // non importa dove vado la prima volta
             return vec![Direction::Up].into_iter();
@@ -317,5 +318,3 @@ impl Utility for ProteinFolding {
         cost - self.h_numer
     }
 }
-
-impl StateExplorerProblem for ProteinFolding {}
