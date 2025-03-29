@@ -21,7 +21,3 @@ pub trait WithSolution: Problem {
 pub trait RandomizeState: Problem {
     fn random_state<R: Rng + ?Sized>(&self, rng: &mut R) -> Self::State;
 }
-
-pub trait StateExplorerProblem: Problem + Utility + WithSolution {}
-
-pub trait IterativeImprovingProblem: Problem + Utility + RandomizeState {}

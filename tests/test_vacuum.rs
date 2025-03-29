@@ -6,7 +6,7 @@ mod tests {
         explorer::{
             AStarExplorer, BFSExplorer, BestFirstGreedyExplorer, DFSExplorer, MinCostExplorer,
         },
-        problem::{Problem, StateExplorerProblem, Utility, WithSolution},
+        problem::{Problem, Utility, WithSolution},
     };
     // use frontier::DequeFrontier;
 
@@ -155,8 +155,6 @@ mod tests {
             state.where_dirty.is_empty()
         }
     }
-
-    impl StateExplorerProblem for CleanProblem {}
 
     #[test]
     fn test_vacuum_bfs() {

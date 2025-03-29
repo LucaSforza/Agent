@@ -4,7 +4,7 @@ use std::time::Duration;
 use agent::iterative_improvement::{
     HillClimbing, ImprovingAlgorithm, Resolver, SimulatedAnnealing, SteepestDescend,
 };
-use agent::problem::{IterativeImprovingProblem, Problem, RandomizeState, Utility};
+use agent::problem::{Problem, RandomizeState, Utility};
 use rand_distr::uniform::{UniformSampler, UniformUsize};
 
 struct MoveQueen {
@@ -124,8 +124,6 @@ impl RandomizeState for NQueen {
         DeploymentQueens::new(pos)
     }
 }
-
-impl IterativeImprovingProblem for NQueen {}
 
 fn resolve_nqueen<A: ImprovingAlgorithm<NQueen>>(
     problem: &NQueen,

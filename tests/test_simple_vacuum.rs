@@ -2,7 +2,7 @@
 mod tests {
     use agent::{
         explorer::{BFSExplorer, DFSExplorer},
-        problem::{Problem, StateExplorerProblem, Utility, WithSolution},
+        problem::{Problem, Utility, WithSolution},
     };
     // use frontier::DequeFrontier;
 
@@ -107,8 +107,6 @@ mod tests {
             state.left_state == TailState::Clean && state.right_state == TailState::Clean
         }
     }
-
-    impl StateExplorerProblem for CleanProblem {}
 
     #[test]
     fn test_bfs_clean_left_dirty_right() {

@@ -8,11 +8,11 @@ use std::{
 use rand::{seq::IteratorRandom, Rng};
 use rand_distr::num_traits::Signed;
 
-use crate::problem::IterativeImprovingProblem;
+use crate::problem::*;
 
 pub struct AttemptResult<P>
 where
-    P: IterativeImprovingProblem,
+    P: Problem,
 {
     pub state: P::State,
     pub h: P::Cost,
@@ -21,7 +21,7 @@ where
 
 impl<P> AttemptResult<P>
 where
-    P: IterativeImprovingProblem,
+    P: Problem,
 {
     pub fn new(state: P::State, h: P::Cost, iterations: usize) -> Self {
         Self {
@@ -34,7 +34,7 @@ where
 
 pub struct ResolverResult<P>
 where
-    P: IterativeImprovingProblem,
+    P: Problem,
 {
     pub state: P::State,
     pub h: P::Cost,
@@ -44,7 +44,7 @@ where
 
 impl<P> fmt::Debug for ResolverResult<P>
 where
-    P: IterativeImprovingProblem<State: fmt::Debug, Cost: fmt::Debug>,
+    P: Problem<State: fmt::Debug, Cost: fmt::Debug>,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "state:\n{:?}", self.state)?;
@@ -56,7 +56,7 @@ where
 
 impl<P> ResolverResult<P>
 where
-    P: IterativeImprovingProblem,
+    P: Problem,
 {
     pub fn from_inner(start: Instant, inner: AttemptResult<P>) -> Self {
         Self {
@@ -70,7 +70,7 @@ where
 
 pub struct Resolver<I, P>
 where
-    P: IterativeImprovingProblem,
+    P: Problem,
     I: ImprovingAlgorithm<P>,
 {
     algo: I,
@@ -79,7 +79,7 @@ where
 
 impl<I, P> Resolver<I, P>
 where
-    P: IterativeImprovingProblem,
+    P: RandomizeState + Utility,
     I: ImprovingAlgorithm<P>,
 {
     pub fn new(algo: I) -> Self {
@@ -92,7 +92,7 @@ where
 
 impl<I, P> Resolver<I, P>
 where
-    P: IterativeImprovingProblem,
+    P: Problem,
     I: ImprovingAlgorithm<P>,
 {
     pub fn resolve(&mut self, problem: &P) -> ResolverResult<P> {
@@ -126,7 +126,7 @@ where
 
 pub trait ImprovingAlgorithm<P>
 where
-    P: IterativeImprovingProblem,
+    P: Problem,
 {
     fn attempt(&mut self, problem: &P) -> AttemptResult<P>;
 }
@@ -141,8 +141,10 @@ impl<R: Rng> SteepestDescend<R> {
     }
 }
 
-impl<R: Rng, P: IterativeImprovingProblem<State: Clone>> ImprovingAlgorithm<P>
-    for SteepestDescend<R>
+impl<R, P> ImprovingAlgorithm<P> for SteepestDescend<R>
+where
+    R: Rng,
+    P: Utility + RandomizeState<State: Clone>,
 {
     fn attempt(&mut self, problem: &P) -> AttemptResult<P> {
         let mut iterations = 0;
@@ -196,7 +198,7 @@ impl<R> HillClimbing<R>
 where
     R: Rng,
 {
-    fn get_next_state<P: IterativeImprovingProblem>(
+    fn get_next_state<P: Utility>(
         lateral: &mut usize,
         problem: &P,
         state: &P::State,
@@ -222,7 +224,7 @@ where
 
 impl<P, R> ImprovingAlgorithm<P> for HillClimbing<R>
 where
-    P: IterativeImprovingProblem<State: Clone>,
+    P: Utility + RandomizeState<State: Clone>,
     R: Rng,
 {
     fn attempt(&mut self, problem: &P) -> AttemptResult<P> {
@@ -276,7 +278,7 @@ use libm::exp;
 
 impl<R, P> ImprovingAlgorithm<P> for SimulatedAnnealing<R>
 where
-    P: IterativeImprovingProblem<Cost: Sub<Output = P::Cost> + Into<f64> + Signed>,
+    P: Utility + RandomizeState<Cost: Sub<Output = P::Cost> + Into<f64> + Signed>,
     R: Rng,
 {
     fn attempt(&mut self, problem: &P) -> AttemptResult<P> {

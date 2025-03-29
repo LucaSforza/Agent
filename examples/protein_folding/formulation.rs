@@ -1,6 +1,6 @@
 use std::ops::{Deref, DerefMut};
 
-use agent::problem::{Problem, StateExplorerProblem, Utility, WithSolution};
+use agent::problem::{Problem, Utility, WithSolution};
 use petgraph::graph::NodeIndex;
 
 #[derive(PartialEq, Eq, Clone)]
@@ -317,5 +317,3 @@ impl Utility for ProteinFolding {
         cost - self.h_numer
     }
 }
-
-impl StateExplorerProblem for ProteinFolding {}

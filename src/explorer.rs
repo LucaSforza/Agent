@@ -96,7 +96,7 @@ pub enum Verbosity {
 
 pub struct Explorer<P, Backend>
 where
-    P: StateExplorerProblem,
+    P: Utility + WithSolution, // TODO: generalize more
     Backend: FrontierBackend<P> + Debug,
 {
     verbosity: Verbosity,
@@ -107,7 +107,7 @@ where
 
 impl<P, Backend> Explorer<P, Backend>
 where
-    P: StateExplorerProblem<State: Eq + Hash + Clone + Debug, Action: Clone>,
+    P: WithSolution + Utility<State: Eq + Hash + Clone + Debug, Action: Clone>,
     Backend: FrontierBackend<P> + Debug,
 {
     pub fn with_verbosity(problem: P, verbosity: Verbosity) -> Self {
