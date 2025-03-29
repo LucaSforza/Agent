@@ -1,11 +1,41 @@
 use std::fmt;
 use std::time::Duration;
 
+use agent::explorer::{AStarExplorer, BestFirstGreedyExplorer, MinCostExplorer};
 use agent::iterative_improvement::{
     HillClimbing, ImprovingAlgorithm, Resolver, SimulatedAnnealing, SteepestDescend,
 };
-use agent::problem::{IterativeImprovingProblem, Problem, RandomizeState, Utility};
-use rand_distr::uniform::{UniformSampler, UniformUsize};
+use agent::problem::{ModifyState, Problem, Utility, WithSolution};
+
+type NextQueenPos = usize;
+
+struct NextQueenIterator {
+    i: usize,
+    n: usize,
+}
+
+impl NextQueenIterator {
+    fn new(n: usize) -> Self {
+        Self { i: 0, n: n }
+    }
+
+    fn void_iter(n: usize) -> Self {
+        Self { i: n, n: n }
+    }
+}
+
+impl Iterator for NextQueenIterator {
+    type Item = NextQueenPos;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.i < self.n {
+            let to_return = self.i;
+            self.i += 1;
+            return Some(to_return);
+        }
+        return None;
+    }
+}
 
 struct MoveQueen {
     col: usize,
@@ -21,13 +51,14 @@ impl MoveQueen {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 struct DeploymentQueens {
     pos: Vec<usize>,
 }
 
 impl fmt::Debug for DeploymentQueens {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f)?;
         let n = self.pos.len();
         for row in 0..n {
             for col in 0..n {
@@ -48,6 +79,25 @@ impl DeploymentQueens {
         Self { pos: pos }
     }
 
+    fn potential_conficts(&self, next_row: NextQueenPos) -> usize {
+        let mut conficts = 0;
+        let next_col = self.pos.len();
+        for (col, row) in self.pos.iter().enumerate() {
+            if *row == next_row || row.abs_diff(next_row) == col.abs_diff(next_col) {
+                conficts += 1;
+            }
+        }
+        conficts
+    }
+
+    fn push_queen(&self, next_row: NextQueenPos) -> (Self, OrderedFloat<f64>) {
+        let cost = self.potential_conficts(next_row);
+        let mut new_pos = self.pos.clone();
+        new_pos.push(next_row);
+        let result = Self::new(new_pos);
+        (result, (cost as f64).into())
+    }
+
     fn move_queen(&self, dir: &MoveQueen) -> Self {
         let mut new_pos = self.pos.clone();
         new_pos[dir.col] = dir.new_row;
@@ -55,17 +105,20 @@ impl DeploymentQueens {
     }
 }
 
+impl Default for DeploymentQueens {
+    fn default() -> Self {
+        Self { pos: Vec::new() }
+    }
+}
+
+#[derive(Clone)]
 struct NQueen {
     n: usize,
-    distr: UniformUsize,
 }
 
 impl NQueen {
     fn new(n: usize) -> Self {
-        Self {
-            n: n,
-            distr: UniformUsize::new(0, n).unwrap(),
-        }
+        Self { n: n }
     }
 }
 
@@ -73,35 +126,29 @@ use ordered_float::OrderedFloat;
 
 impl Problem for NQueen {
     type State = DeploymentQueens;
-    type Action = MoveQueen;
+    type Action = NextQueenPos;
     type Cost = OrderedFloat<f64>;
+    type ActionIterator = NextQueenIterator;
 
-    fn executable_actions(&self, state: &Self::State) -> impl Iterator<Item = Self::Action> {
-        let mut actions = Vec::with_capacity(self.n * (self.n - 1));
-
-        for i in 0..self.n {
-            for j in 0..self.n {
-                if state.pos[i] != j {
-                    actions.push(MoveQueen::new(i, j))
-                }
-            }
+    fn executable_actions(&self, state: &Self::State) -> Self::ActionIterator {
+        if self.is_goal(state) {
+            NextQueenIterator::void_iter(self.n)
+        } else {
+            NextQueenIterator::new(self.n)
         }
-
-        actions.into_iter()
     }
 
     fn result(&self, state: &Self::State, action: &Self::Action) -> (Self::State, Self::Cost) {
-        let new_state = state.move_queen(action);
-        (new_state, 0.into())
+        state.push_queen(*action)
     }
 }
 
 impl Utility for NQueen {
     fn heuristic(&self, state: &Self::State) -> Self::Cost {
-        let mut result = 0.0;
+        let mut result: f64 = 0.0;
 
-        for i in 0..self.n {
-            for j in (i + 1)..self.n {
+        for i in 0..state.pos.len() {
+            for j in (i + 1)..state.pos.len() {
                 if state.pos[i] == state.pos[j]
                     || state.pos[i].abs_diff(state.pos[j]) == i.abs_diff(j)
                 {
@@ -114,18 +161,61 @@ impl Utility for NQueen {
     }
 }
 
-impl RandomizeState for NQueen {
-    fn random_state<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> Self::State {
-        let mut pos = Vec::with_capacity(self.n);
-        for _ in 0..self.n {
-            pos.push(self.distr.sample(rng));
-        }
-
-        DeploymentQueens::new(pos)
+impl WithSolution for NQueen {
+    fn is_goal(&self, state: &Self::State) -> bool {
+        self.n == state.pos.len()
     }
 }
 
-impl IterativeImprovingProblem for NQueen {}
+struct MoveQueenIterator {
+    i: usize,
+    j: usize,
+    n: usize,
+}
+
+impl MoveQueenIterator {
+    fn new(n: usize) -> Self {
+        Self { i: 0, j: 0, n: n }
+    }
+}
+
+impl Iterator for MoveQueenIterator {
+    type Item = MoveQueen;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.i < self.n {
+            let to_move = MoveQueen::new(self.j, self.i);
+            self.i += 1;
+
+            return to_move.into();
+        } else if self.j >= self.n {
+            return None;
+        } else {
+            let to_move = MoveQueen::new(self.j, self.i);
+            self.j += 1;
+            if self.j >= self.n {
+                // esauriamo l'iteratore se finiamo le colonne da esplorare
+                self.i = self.n;
+            } else {
+                self.i = 0;
+            }
+            return to_move.into();
+        }
+    }
+}
+
+impl ModifyState for NQueen {
+    type ModifyAction = MoveQueen;
+    type ModifyActionIterator = MoveQueenIterator;
+
+    fn modify_actions(&self, _state: &Self::State) -> Self::ModifyActionIterator {
+        MoveQueenIterator::new(self.n)
+    }
+
+    fn modify(&self, state: &Self::State, action: &Self::ModifyAction) -> Self::State {
+        state.move_queen(action)
+    }
+}
 
 fn resolve_nqueen<A: ImprovingAlgorithm<NQueen>>(
     problem: &NQueen,
@@ -218,7 +308,34 @@ fn run_nqueen(n: usize, iterations: u32, restarts: usize) {
     resolve_restart_nqueen(&problem, &mut resolver, iterations, restarts);
 }
 
+fn run_nqueen_explorer(n: usize) {
+    let problem = NQueen::new(n);
+
+    println!("A*:");
+    let mut explorer = AStarExplorer::new(problem.clone());
+
+    let result = explorer.search(DeploymentQueens::default());
+
+    println!("{}", result);
+
+    println!("MinCost:");
+    let mut explorer = MinCostExplorer::new(problem.clone());
+
+    let result = explorer.search(DeploymentQueens::default());
+
+    println!("{}", result);
+
+    println!("BestFirst:");
+    let mut explorer = BestFirstGreedyExplorer::new(problem);
+
+    let result = explorer.search(DeploymentQueens::default());
+
+    println!("{}", result);
+}
+
 fn main() {
-    run_nqueen(32, 10, 10);
-    run_one_time_nqueen(32, 10);
+    run_nqueen(8, 100, 10);
+    run_one_time_nqueen(8, 10);
+
+    run_nqueen_explorer(8);
 }
