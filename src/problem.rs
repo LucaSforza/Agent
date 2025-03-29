@@ -19,6 +19,35 @@ pub trait WithSolution: Problem {
     fn is_goal(&self, state: &Self::State) -> bool;
 }
 
+pub trait ModifyState: Problem {
+    type ModifyAction;
+    type ModifyActionIterator: Iterator<Item = Self::ModifyAction>;
+
+    fn modify_actions(&self, state: &Self::State) -> Self::ModifyActionIterator;
+    fn modify(&self, state: &Self::State, action: &Self::ModifyAction) -> Self::State;
+}
+
+pub trait ModifyRandom: ModifyState {
+    fn random_modify_action<R: Rng + ?Sized>(
+        &self,
+        rng: &mut R,
+        state: &Self::State,
+    ) -> Option<Self::ModifyAction>;
+}
+
+impl<T> ModifyRandom for T
+where
+    T: ModifyState,
+{
+    fn random_modify_action<R: Rng + ?Sized>(
+        &self,
+        rng: &mut R,
+        state: &Self::State,
+    ) -> Option<Self::ModifyAction> {
+        self.modify_actions(state).choose(rng)
+    }
+}
+
 pub trait RandomizeState: Problem<ActionIterator: IteratorRandom> {
     fn random_action<R: Rng + ?Sized>(
         &self,

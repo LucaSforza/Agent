@@ -5,7 +5,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use rand::{seq::IteratorRandom, Rng};
+use rand::Rng;
 use rand_distr::num_traits::Signed;
 
 use crate::problem::*;
@@ -144,7 +144,7 @@ impl<R: Rng> SteepestDescend<R> {
 impl<R, P> ImprovingAlgorithm<P> for SteepestDescend<R>
 where
     R: Rng,
-    P: Utility + RandomizeState<State: Clone>,
+    P: ModifyState + Utility + RandomizeState<State: Clone>,
 {
     fn attempt(&mut self, problem: &P) -> AttemptResult<P> {
         let mut iterations = 0;
@@ -154,8 +154,8 @@ where
             iterations += 1;
             let mut new_curr_state = curr_state.clone();
             let mut new_curr_h = curr_h;
-            for a in problem.executable_actions(&curr_state) {
-                let (new_state, _) = problem.result(&curr_state, &a);
+            for a in problem.modify_actions(&curr_state) {
+                let new_state = problem.modify(&curr_state, &a);
                 let new_h = problem.heuristic(&new_state);
                 if new_h < new_curr_h {
                     new_curr_state = new_state;
@@ -198,16 +198,16 @@ impl<R> HillClimbing<R>
 where
     R: Rng,
 {
-    fn get_next_state<P: Utility>(
+    fn get_next_state<P: Utility + ModifyState>(
         lateral: &mut usize,
         problem: &P,
         state: &P::State,
         curr_h: P::Cost,
         max_lateral: Option<usize>,
     ) -> Option<(P::State, P::Cost)> {
-        let mut actions = problem.executable_actions(state);
+        let mut actions = problem.modify_actions(state);
         while let Some(a) = actions.next() {
-            let (next_state, _) = problem.result(state, &a);
+            let next_state = problem.modify(state, &a);
             let next_h = problem.heuristic(&next_state);
             if max_lateral.map_or(true, |x| x > *lateral) && next_h == curr_h {
                 *lateral += 1;
@@ -224,7 +224,7 @@ where
 
 impl<P, R> ImprovingAlgorithm<P> for HillClimbing<R>
 where
-    P: Utility + RandomizeState<State: Clone>,
+    P: ModifyState + Utility + RandomizeState<State: Clone>,
     R: Rng,
 {
     fn attempt(&mut self, problem: &P) -> AttemptResult<P> {
@@ -278,7 +278,7 @@ use libm::exp;
 
 impl<R, P> ImprovingAlgorithm<P> for SimulatedAnnealing<R>
 where
-    P: Utility + RandomizeState<Cost: Sub<Output = P::Cost> + Into<f64> + Signed>,
+    P: ModifyRandom + Utility + RandomizeState<Cost: Sub<Output = P::Cost> + Into<f64> + Signed>,
     R: Rng,
 {
     fn attempt(&mut self, problem: &P) -> AttemptResult<P> {
@@ -287,13 +287,15 @@ where
 
         for t in 0.. {
             let velocity = (self.cooling)(t);
+            if curr_h <= Default::default() {
+                return AttemptResult::new(curr_state, curr_h, t + 1);
+            }
             if velocity <= self.precision {
                 return AttemptResult::new(curr_state, curr_h, t + 1);
             }
-            let vicinity: Vec<P::Action> = problem.executable_actions(&curr_state).collect();
-            let next_action = vicinity.into_iter().choose(&mut self.rng);
+            let next_action = problem.random_modify_action(&mut self.rng, &curr_state);
             if let Some(next_action) = next_action {
-                let (next_state, _) = problem.result(&curr_state, &next_action);
+                let next_state = problem.modify(&curr_state, &next_action);
                 let next_h = problem.heuristic(&next_state);
                 if next_h <= curr_h {
                     curr_state = next_state;

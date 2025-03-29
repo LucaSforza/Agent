@@ -1,13 +1,11 @@
 use std::fmt;
 use std::time::Duration;
 
-use agent::explorer::{AStarExplorer, BFSExplorer};
+use agent::explorer::{AStarExplorer, BestFirstGreedyExplorer, MinCostExplorer};
 use agent::iterative_improvement::{
     HillClimbing, ImprovingAlgorithm, Resolver, SimulatedAnnealing, SteepestDescend,
 };
-use agent::problem::{Problem, RandomizeState, Utility, WithSolution};
-use rand::seq::IteratorRandom;
-use rand_distr::uniform::{UniformSampler, UniformUsize};
+use agent::problem::{ModifyState, Problem, Utility, WithSolution};
 
 type NextQueenPos = usize;
 
@@ -81,10 +79,23 @@ impl DeploymentQueens {
         Self { pos: pos }
     }
 
-    fn push_queen(&self, col: NextQueenPos) -> Self {
+    fn potential_conficts(&self, next_row: NextQueenPos) -> usize {
+        let mut conficts = 0;
+        let next_col = self.pos.len();
+        for (col, row) in self.pos.iter().enumerate() {
+            if *row == next_row || row.abs_diff(next_row) == col.abs_diff(next_col) {
+                conficts += 1;
+            }
+        }
+        conficts
+    }
+
+    fn push_queen(&self, next_row: NextQueenPos) -> (Self, OrderedFloat<f64>) {
+        let cost = self.potential_conficts(next_row);
         let mut new_pos = self.pos.clone();
-        new_pos.push(col);
-        Self::new(new_pos)
+        new_pos.push(next_row);
+        let result = Self::new(new_pos);
+        (result, (cost as f64).into())
     }
 
     fn move_queen(&self, dir: &MoveQueen) -> Self {
@@ -100,17 +111,14 @@ impl Default for DeploymentQueens {
     }
 }
 
+#[derive(Clone)]
 struct NQueen {
     n: usize,
-    distr: UniformUsize,
 }
 
 impl NQueen {
     fn new(n: usize) -> Self {
-        Self {
-            n: n,
-            distr: UniformUsize::new(0, n).unwrap(),
-        }
+        Self { n: n }
     }
 }
 
@@ -131,8 +139,7 @@ impl Problem for NQueen {
     }
 
     fn result(&self, state: &Self::State, action: &Self::Action) -> (Self::State, Self::Cost) {
-        let new_state = state.push_queen(*action);
-        (new_state, 1.into())
+        state.push_queen(*action)
     }
 }
 
@@ -150,10 +157,6 @@ impl Utility for NQueen {
             }
         }
 
-        if !self.is_goal(state) {
-            result += (self.n - state.pos.len()) as f64
-        }
-
         return result.into();
     }
 }
@@ -161,6 +164,56 @@ impl Utility for NQueen {
 impl WithSolution for NQueen {
     fn is_goal(&self, state: &Self::State) -> bool {
         self.n == state.pos.len()
+    }
+}
+
+struct MoveQueenIterator {
+    i: usize,
+    j: usize,
+    n: usize,
+}
+
+impl MoveQueenIterator {
+    fn new(n: usize) -> Self {
+        Self { i: 0, j: 0, n: n }
+    }
+}
+
+impl Iterator for MoveQueenIterator {
+    type Item = MoveQueen;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.i < self.n {
+            let to_move = MoveQueen::new(self.j, self.i);
+            self.i += 1;
+
+            return to_move.into();
+        } else if self.j >= self.n {
+            return None;
+        } else {
+            let to_move = MoveQueen::new(self.j, self.i);
+            self.j += 1;
+            if self.j >= self.n {
+                // esauriamo l'iteratore se finiamo le colonne da esplorare
+                self.i = self.n;
+            } else {
+                self.i = 0;
+            }
+            return to_move.into();
+        }
+    }
+}
+
+impl ModifyState for NQueen {
+    type ModifyAction = MoveQueen;
+    type ModifyActionIterator = MoveQueenIterator;
+
+    fn modify_actions(&self, _state: &Self::State) -> Self::ModifyActionIterator {
+        MoveQueenIterator::new(self.n)
+    }
+
+    fn modify(&self, state: &Self::State, action: &Self::ModifyAction) -> Self::State {
+        state.move_queen(action)
     }
 }
 
@@ -258,7 +311,22 @@ fn run_nqueen(n: usize, iterations: u32, restarts: usize) {
 fn run_nqueen_explorer(n: usize) {
     let problem = NQueen::new(n);
 
-    let mut explorer = AStarExplorer::new(problem);
+    println!("A*:");
+    let mut explorer = AStarExplorer::new(problem.clone());
+
+    let result = explorer.search(DeploymentQueens::default());
+
+    println!("{}", result);
+
+    println!("MinCost:");
+    let mut explorer = MinCostExplorer::new(problem.clone());
+
+    let result = explorer.search(DeploymentQueens::default());
+
+    println!("{}", result);
+
+    println!("BestFirst:");
+    let mut explorer = BestFirstGreedyExplorer::new(problem);
 
     let result = explorer.search(DeploymentQueens::default());
 
@@ -266,8 +334,8 @@ fn run_nqueen_explorer(n: usize) {
 }
 
 fn main() {
-    // run_nqueen(8, 2500, 100);
-    // run_one_time_nqueen(8, 100);
+    run_nqueen(8, 100, 10);
+    run_one_time_nqueen(8, 10);
 
-    run_nqueen_explorer(100);
+    run_nqueen_explorer(8);
 }
