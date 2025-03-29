@@ -15,20 +15,22 @@ use crate::{
     problem::*,
 };
 
-struct InnerResult<Action>
+struct InnerResult<State, Action>
 where
     Action: Clone,
 {
     actions: Option<Vec<Action>>,
+    state: Option<State>,
     max_frontier_size: usize,
 }
 
-impl<Action> InnerResult<Action>
+impl<State, Action> InnerResult<State, Action>
 where
     Action: Clone,
 {
-    fn found(actions: Vec<Action>, max_frontier_size: usize) -> Self {
+    fn found(state: State, actions: Vec<Action>, max_frontier_size: usize) -> Self {
         Self {
+            state: state.into(),
             actions: actions.into(),
             max_frontier_size: max_frontier_size,
         }
@@ -36,23 +38,25 @@ where
 
     fn not_found(max_frontier_size: usize) -> Self {
         Self {
+            state: None,
             actions: None,
             max_frontier_size: max_frontier_size,
         }
     }
 }
 
-pub struct SearchResult<Action>
+pub struct SearchResult<State, Action>
 where
     Action: Clone,
 {
     pub total_time: Duration,
+    pub state: Option<State>,
     pub actions: Option<Vec<Action>>,
     pub n_iter: usize,
     pub max_frontier_size: usize,
 }
 
-impl<Action> SearchResult<Action>
+impl<State, Action> SearchResult<State, Action>
 where
     Action: Clone,
 {
@@ -60,13 +64,19 @@ where
         Self {
             total_time: Duration::default(),
             actions: None,
+            state: None,
             n_iter: 0,
             max_frontier_size: 0,
         }
     }
 
-    fn from_inner_result(start: Instant, n_iter: usize, inner_result: InnerResult<Action>) -> Self {
+    fn from_inner_result(
+        start: Instant,
+        n_iter: usize,
+        inner_result: InnerResult<State, Action>,
+    ) -> Self {
         Self {
+            state: inner_result.state,
             total_time: start.elapsed(),
             actions: inner_result.actions,
             n_iter: n_iter,
@@ -75,16 +85,29 @@ where
     }
 }
 
-impl<Action> fmt::Display for SearchResult<Action>
+impl<State, Action> fmt::Display for SearchResult<State, Action>
 where
+    State: Debug,
     Action: Clone + Debug,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(
-            f,
-            "actions: {:?}\ntime: {:?}\niterations: {}\nmax frontier size: {}",
-            self.actions, self.total_time, self.n_iter, self.max_frontier_size
-        )
+        if self.state.is_some() && self.actions.is_some() {
+            write!(
+                f,
+                "state: {:?}\nactions: {:?}\ntime: {:?}\niterations: {}\nmax frontier size: {}",
+                self.state.as_ref().unwrap(),
+                self.actions.as_ref().unwrap(),
+                self.total_time,
+                self.n_iter,
+                self.max_frontier_size
+            )
+        } else {
+            write!(
+                f,
+                "no solution found\ntime: {:?}\niterations: {}\nmax frontier size: {}",
+                self.total_time, self.n_iter, self.max_frontier_size
+            )
+        }
     }
 }
 
@@ -141,9 +164,9 @@ where
         &mut self,
         init_state: P::State,
         max_limit: usize,
-    ) -> SearchResult<P::Action> {
+    ) -> SearchResult<P::State, P::Action> {
         let mut lim = 1;
-        let mut result: SearchResult<P::Action> = SearchResult::new();
+        let mut result = SearchResult::new();
         let start = Instant::now();
         let mut n_iter = 0;
         loop {
@@ -157,10 +180,7 @@ where
                 result.max_frontier_size = inner_result.max_frontier_size
             }
             if inner_result.actions.is_some() {
-                result.n_iter = n_iter;
-                result.total_time = start.elapsed();
-                result.actions = inner_result.actions;
-                return result;
+                return SearchResult::from_inner_result(start, n_iter, inner_result);
             }
             lim += 1
         }
@@ -170,14 +190,14 @@ where
         &mut self,
         init_state: P::State,
         max_depth: usize,
-    ) -> SearchResult<P::Action> {
+    ) -> SearchResult<P::State, P::Action> {
         let start = Instant::now();
         let mut n_iter = 0;
         let result = self.inner_search(&mut n_iter, init_state, max_depth.into());
         SearchResult::from_inner_result(start, n_iter, result)
     }
 
-    pub fn search(&mut self, init_state: P::State) -> SearchResult<P::Action> {
+    pub fn search(&mut self, init_state: P::State) -> SearchResult<P::State, P::Action> {
         let start = Instant::now();
         let mut n_iter = 0;
         let result = self.inner_search(&mut n_iter, init_state, None);
@@ -189,7 +209,7 @@ where
         n_iter: &mut usize,
         init_state: P::State,
         lim: Option<usize>,
-    ) -> InnerResult<P::Action> {
+    ) -> InnerResult<P::State, P::Action> {
         self.frontier.reset();
         self.explored.clear();
         self.frontier.enqueue_or_replace(Node::new(
@@ -201,7 +221,7 @@ where
         ));
 
         //let mut n_iter = 0;
-        let result: InnerResult<P::Action>;
+        let result: InnerResult<P::State, P::Action>;
 
         let mut max_frontier_size = 0;
         self.eprint_status(*n_iter);
@@ -211,8 +231,11 @@ where
             let curr_state = curr_node.get_state();
 
             if self.problem.is_goal(&curr_state) {
-                result =
-                    InnerResult::<P::Action>::found(curr_node.get_plan().into(), max_frontier_size);
+                result = InnerResult::<P::State, P::Action>::found(
+                    curr_node.get_state().clone(),
+                    curr_node.get_plan().into(),
+                    max_frontier_size,
+                );
                 return result;
             } else {
                 let depth = curr_node.get_depth();
@@ -238,7 +261,7 @@ where
             }
             self.eprint_status(*n_iter);
         }
-        result = InnerResult::<P::Action>::not_found(max_frontier_size);
+        result = InnerResult::<P::State, P::Action>::not_found(max_frontier_size);
         return result;
     }
 

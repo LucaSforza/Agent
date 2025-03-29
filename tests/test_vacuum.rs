@@ -99,8 +99,9 @@ mod tests {
         type State = HouseState;
         type Action = Action;
         type Cost = OrderedFloat<f64>;
+        type ActionIterator = <Vec<Self::Action> as IntoIterator>::IntoIter;
 
-        fn executable_actions(&self, state: &Self::State) -> impl Iterator<Item = Self::Action> {
+        fn executable_actions(&self, state: &Self::State) -> Self::ActionIterator {
             let mut actions = Vec::with_capacity(6); // TODO: change this
             if self.is_goal(state) {
                 actions.push(Action::Nothing);
