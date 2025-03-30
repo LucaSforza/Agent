@@ -228,9 +228,8 @@ impl Problem for ProteinFolding {
     type State = Board;
     type Action = Direction;
     type Cost = u32;
-    type ActionIterator = <Vec<Self::Action> as IntoIterator>::IntoIter;
 
-    fn executable_actions(&self, state: &Self::State) -> Self::ActionIterator {
+    fn executable_actions(&self, state: &Self::State) -> impl Iterator<Item = Self::Action> {
         if state.index.len() == 1 {
             // non importa dove vado la prima volta
             return vec![Direction::Up].into_iter();

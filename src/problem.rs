@@ -4,10 +4,9 @@ use rand_distr::num_traits::Num;
 pub trait Problem {
     type State;
     type Action;
-    type ActionIterator: Iterator<Item = Self::Action>;
     type Cost: Default + Copy + Ord + Num;
 
-    fn executable_actions(&self, state: &Self::State) -> Self::ActionIterator;
+    fn executable_actions(&self, state: &Self::State) -> impl Iterator<Item = Self::Action>;
     fn result(&self, state: &Self::State, action: &Self::Action) -> (Self::State, Self::Cost);
 }
 
@@ -21,9 +20,8 @@ pub trait WithSolution: Problem {
 
 pub trait ModifyState: Problem {
     type ModifyAction;
-    type ModifyActionIterator: Iterator<Item = Self::ModifyAction>;
 
-    fn modify_actions(&self, state: &Self::State) -> Self::ModifyActionIterator;
+    fn modify_actions(&self, state: &Self::State) -> impl Iterator<Item = Self::ModifyAction>;
     fn modify(&self, state: &Self::State, action: &Self::ModifyAction) -> Self::State;
 }
 
@@ -48,7 +46,7 @@ where
     }
 }
 
-pub trait RandomizeState: Problem<ActionIterator: IteratorRandom> {
+pub trait RandomizeState: Problem {
     fn random_action<R: Rng + ?Sized>(
         &self,
         rng: &mut R,
@@ -60,7 +58,7 @@ pub trait RandomizeState: Problem<ActionIterator: IteratorRandom> {
 
 impl<T> RandomizeState for T
 where
-    T: WithSolution + Problem<State: Default, ActionIterator: IteratorRandom>,
+    T: WithSolution + Problem<State: Default>,
 {
     fn random_action<R: Rng + ?Sized>(
         &self,
