@@ -58,9 +58,8 @@ mod tests {
         type State = HouseState;
         type Action = Action;
         type Cost = OrderedFloat<f64>;
-        type ActionIterator = <Vec<Self::Action> as IntoIterator>::IntoIter;
 
-        fn executable_actions(&self, _: &Self::State) -> Self::ActionIterator {
+        fn executable_actions(&self, _: &Self::State) -> impl Iterator<Item = Self::Action> {
             vec![Action::Left, Action::Right, Action::Suck].into_iter()
         }
 

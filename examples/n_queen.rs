@@ -128,9 +128,8 @@ impl Problem for NQueen {
     type State = DeploymentQueens;
     type Action = NextQueenPos;
     type Cost = OrderedFloat<f64>;
-    type ActionIterator = NextQueenIterator;
 
-    fn executable_actions(&self, state: &Self::State) -> Self::ActionIterator {
+    fn executable_actions(&self, state: &Self::State) -> impl Iterator<Item = Self::Action> {
         if self.is_goal(state) {
             NextQueenIterator::void_iter(self.n)
         } else {
@@ -206,9 +205,8 @@ impl Iterator for MoveQueenIterator {
 
 impl ModifyState for NQueen {
     type ModifyAction = MoveQueen;
-    type ModifyActionIterator = MoveQueenIterator;
 
-    fn modify_actions(&self, _state: &Self::State) -> Self::ModifyActionIterator {
+    fn modify_actions(&self, _state: &Self::State) -> impl Iterator<Item = Self::ModifyAction> {
         MoveQueenIterator::new(self.n)
     }
 
