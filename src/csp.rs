@@ -1,4 +1,4 @@
-use crate::problem::{Problem, WithSolution};
+use crate::problem::{CostructSolution, Problem, SuitableState};
 enum Domain {
     Int(i32),
     Float(f64),
@@ -12,17 +12,19 @@ pub trait Variable {
     fn get_val(&self, i: Self::IndexVar) -> Domain;
 }
 
-pub trait ConstraintSatisfaction: Problem + WithSolution {}
+pub trait ConstraintSatisfaction: Problem + SuitableState {
+    type ChooseItem;
+}
 pub trait CSPAlgoritm {
     fn resolve();
 }
-pub struct BackTracking<P: WithSolution> {
-    stack: Vec<P::Action>,
+pub struct BackTracking<P: ConstraintSatisfaction> {
+    stack: Vec<P::ChooseItem>,
 }
 
 impl<P> CSPAlgoritm for BackTracking<P>
 where
-    P: WithSolution,
+    P: ConstraintSatisfaction,
 {
     fn resolve() {
         todo!()
