@@ -3,6 +3,22 @@ use rand_distr::num_traits::Num;
 
 pub trait Problem {
     type State;
+}
+
+pub trait InitState: Problem {
+    fn init_state(&self) -> Self::State;
+}
+
+impl<T> InitState for T
+where
+    T: Problem<State: Default>,
+{
+    fn init_state(&self) -> Self::State {
+        Default::default()
+    }
+}
+
+pub trait CostructSolution: Problem {
     type Action;
     type Cost: Default + Copy + Ord + Num;
 
@@ -10,55 +26,53 @@ pub trait Problem {
     fn result(&self, state: &Self::State, action: &Self::Action) -> (Self::State, Self::Cost);
 }
 
-pub trait Utility: Problem {
+pub trait Utility: CostructSolution {
     fn heuristic(&self, state: &Self::State) -> Self::Cost;
 }
 
-pub trait WithSolution: Problem {
-    fn is_goal(&self, state: &Self::State) -> bool;
+pub trait SuitableState: Problem {
+    fn is_suitable(&self, state: &Self::State) -> bool;
 }
 
-pub trait ModifyState: Problem {
-    type ModifyAction;
+pub trait StatePerturbation: Problem {
+    type Perturbation;
 
-    fn modify_actions(&self, state: &Self::State) -> impl Iterator<Item = Self::ModifyAction>;
-    fn modify(&self, state: &Self::State, action: &Self::ModifyAction) -> Self::State;
+    fn perturbations(&self, state: &Self::State) -> impl Iterator<Item = Self::Perturbation>;
+    fn perturb(&self, state: &Self::State, action: &Self::Perturbation) -> Self::State;
 }
 
-pub trait ModifyRandom: ModifyState {
-    fn random_modify_action<R: Rng + ?Sized>(
+pub trait RandomPerturbation: StatePerturbation {
+    fn random_pertubation<R: Rng + ?Sized>(
         &self,
         rng: &mut R,
         state: &Self::State,
-    ) -> Option<Self::ModifyAction>;
+    ) -> Option<Self::Perturbation>;
 }
 
-impl<T> ModifyRandom for T
+impl<T> RandomPerturbation for T
 where
-    T: ModifyState,
+    T: StatePerturbation,
 {
-    fn random_modify_action<R: Rng + ?Sized>(
+    fn random_pertubation<R: Rng + ?Sized>(
         &self,
         rng: &mut R,
         state: &Self::State,
-    ) -> Option<Self::ModifyAction> {
-        self.modify_actions(state).choose(rng)
+    ) -> Option<Self::Perturbation> {
+        self.perturbations(state).choose(rng)
     }
 }
 
-pub trait RandomizeState: Problem {
+pub trait RandomAction: CostructSolution {
     fn random_action<R: Rng + ?Sized>(
         &self,
         rng: &mut R,
         state: &Self::State,
     ) -> Option<Self::Action>;
-
-    fn random_state<R: Rng + ?Sized>(&self, rng: &mut R) -> Self::State;
 }
 
-impl<T> RandomizeState for T
+impl<T> RandomAction for T
 where
-    T: WithSolution + Problem<State: Default>,
+    T: CostructSolution,
 {
     fn random_action<R: Rng + ?Sized>(
         &self,
@@ -67,15 +81,24 @@ where
     ) -> Option<Self::Action> {
         self.executable_actions(state).choose(rng)
     }
+}
 
+pub trait RandomState: CostructSolution {
+    fn random_state<R: Rng + ?Sized>(&self, rng: &mut R) -> Self::State;
+}
+
+impl<T> RandomState for T
+where
+    T: SuitableState + RandomAction + InitState,
+{
     fn random_state<R: Rng + ?Sized>(&self, rng: &mut R) -> Self::State {
         // TODO: What if the while loop runs indefinitely?
-        let mut state = Default::default();
-        while !self.is_goal(&state) {
+        let mut state = self.init_state();
+        while !self.is_suitable(&state) {
             if let Some(action) = self.random_action(rng, &state) {
                 state = self.result(&state, &action).0;
             } else {
-                state = Default::default()
+                state = self.init_state();
             }
         }
 
@@ -98,12 +121,12 @@ pub trait MutateGene: Problem {
 
 impl<T> MutateGene for T
 where
-    T: ModifyState<State: Clone>,
+    T: RandomPerturbation<State: Clone>,
 {
     fn mutate_gene<R: Rng + ?Sized>(&self, rng: &mut R, state: &Self::State) -> Self::State {
-        let action = self.random_modify_action(rng, state);
+        let action = self.random_pertubation(rng, state);
         if let Some(action) = action {
-            self.modify(state, &action)
+            self.perturb(state, &action)
         } else {
             state.clone()
         }

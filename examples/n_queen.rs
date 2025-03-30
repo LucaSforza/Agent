@@ -1,12 +1,15 @@
 use std::fmt;
 use std::time::Duration;
 
-use agent::explorer::{AStarExplorer, BestFirstGreedyExplorer, MinCostExplorer};
-use agent::iterative_improvement::{
-    GeneticAlgorithm, HillClimbing, ImprovingAlgorithm, LocalBeam, Resolver, SimulatedAnnealing,
-    SteepestDescend,
+use agent::improve::{
+    algorithms::GeneticAlgorithm, algorithms::HillClimbing, algorithms::ImprovingAlgorithm,
+    algorithms::LocalBeam, algorithms::SimulatedAnnealing, algorithms::SteepestDescend,
+    resolver::Resolver,
 };
-use agent::problem::{Crossover, ModifyState, Problem, Utility, WithSolution};
+use agent::problem::{
+    CostructSolution, Crossover, Problem, StatePerturbation, SuitableState, Utility,
+};
+use agent::statexplorer::resolver::{AStarExplorer, BestFirstGreedyExplorer, MinCostExplorer};
 
 use ordered_float::OrderedFloat;
 
@@ -127,11 +130,14 @@ impl NQueen {
 
 impl Problem for NQueen {
     type State = DeploymentQueens;
+}
+
+impl CostructSolution for NQueen {
     type Action = NextQueenPos;
     type Cost = OrderedFloat<f64>;
 
     fn executable_actions(&self, state: &Self::State) -> impl Iterator<Item = Self::Action> {
-        if self.is_goal(state) {
+        if self.is_suitable(state) {
             NextQueenIterator::void_iter(self.n)
         } else {
             NextQueenIterator::new(self.n)
@@ -161,8 +167,8 @@ impl Utility for NQueen {
     }
 }
 
-impl WithSolution for NQueen {
-    fn is_goal(&self, state: &Self::State) -> bool {
+impl SuitableState for NQueen {
+    fn is_suitable(&self, state: &Self::State) -> bool {
         self.n == state.pos.len()
     }
 }
@@ -204,14 +210,14 @@ impl Iterator for MoveQueenIterator {
     }
 }
 
-impl ModifyState for NQueen {
-    type ModifyAction = MoveQueen;
+impl StatePerturbation for NQueen {
+    type Perturbation = MoveQueen;
 
-    fn modify_actions(&self, _state: &Self::State) -> impl Iterator<Item = Self::ModifyAction> {
+    fn perturbations(&self, _state: &Self::State) -> impl Iterator<Item = Self::Perturbation> {
         MoveQueenIterator::new(self.n)
     }
 
-    fn modify(&self, state: &Self::State, action: &Self::ModifyAction) -> Self::State {
+    fn perturb(&self, state: &Self::State, action: &Self::Perturbation) -> Self::State {
         state.move_queen(action)
     }
 }

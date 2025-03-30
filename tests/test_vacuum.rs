@@ -3,10 +3,10 @@ mod tests {
     use std::rc::Rc;
 
     use agent::{
-        explorer::{
+        problem::{CostructSolution, Problem, SuitableState, Utility},
+        statexplorer::resolver::{
             AStarExplorer, BFSExplorer, BestFirstGreedyExplorer, DFSExplorer, MinCostExplorer,
         },
-        problem::{Problem, Utility, WithSolution},
     };
     // use frontier::DequeFrontier;
 
@@ -97,12 +97,15 @@ mod tests {
 
     impl Problem for CleanProblem {
         type State = HouseState;
+    }
+
+    impl CostructSolution for CleanProblem {
         type Action = Action;
         type Cost = OrderedFloat<f64>;
 
         fn executable_actions(&self, state: &Self::State) -> impl Iterator<Item = Self::Action> {
             let mut actions = Vec::with_capacity(6); // TODO: change this
-            if self.is_goal(state) {
+            if self.is_suitable(state) {
                 actions.push(Action::Nothing);
             }
             if state.is_dirty() {
@@ -150,8 +153,8 @@ mod tests {
         }
     }
 
-    impl WithSolution for CleanProblem {
-        fn is_goal(&self, state: &Self::State) -> bool {
+    impl SuitableState for CleanProblem {
+        fn is_suitable(&self, state: &Self::State) -> bool {
             state.where_dirty.is_empty()
         }
     }
