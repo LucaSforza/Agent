@@ -7,11 +7,11 @@ use std::{
     time::{Duration, Instant},
 };
 
+use ordered_float::OrderedFloat;
 use rand::Rng;
 use rand_distr::{
     num_traits::{Inv, Signed},
-    uniform::SampleUniform,
-    weighted::{Weight, WeightedIndex},
+    weighted::WeightedIndex,
     Distribution,
 };
 
@@ -428,19 +428,33 @@ pub struct GeneticAlgorithm<R: Rng> {
     pmut: f64,
 }
 
+impl<R: Rng> GeneticAlgorithm<R> {
+    pub fn from_parts(rng: R, k: usize, max_iter: Option<usize>, pmut: f64) -> Self {
+        Self {
+            rng: rng,
+            k: k,
+            max_iter: max_iter,
+            pmut: pmut,
+        }
+    }
+}
+
 impl<R, P> ImprovingAlgorithm<P> for GeneticAlgorithm<R>
 where
     R: Rng,
-    P: Utility + RandomizeState + Genetic<Cost: Weight + SampleUniform + Inv<Output = P::Cost>>,
+    P: MutateGene + Utility + RandomizeState + Crossover<Cost: From<f64> + Into<f64>>,
 {
     fn attempt(&mut self, problem: &P) -> AttemptResult<P> {
         let mut current_pop = Vec::with_capacity(self.k);
-        let mut current_weights = Vec::with_capacity(self.k);
+        let mut current_weights: Vec<f64> = Vec::with_capacity(self.k);
         for _ in 0..self.k {
             let state = problem.random_state(&mut self.rng);
             let h = problem.heuristic(&state);
+            if h <= Default::default() {
+                return AttemptResult::new(state, h, 0);
+            }
             current_pop.push(state);
-            current_weights.push(h.inv()); // TODO: aggiungi reverse
+            current_weights.push(h.into().inv()); // TODO: aggiungi reverse
         }
         let mut iter = 0;
         let mut distr =
@@ -468,7 +482,7 @@ where
                 }
 
                 new_pop.push(child);
-                new_weights.push(child_h.inv());
+                new_weights.push(child_h.into().inv());
             }
 
             current_pop = new_pop;
@@ -477,11 +491,14 @@ where
 
             // Stop if max iterations reached
             if self.max_iter.map_or(false, |max| max <= iter) {
-                let (best_s, best_h) = current_pop
+                let best_s = current_pop
                     .into_iter()
                     .zip(current_weights.into_iter())
-                    .min_by_key(|(_, h)| *h)
+                    .min_by_key(|(_, h)| OrderedFloat(*h))
+                    .map(|(x, _)| x)
                     .unwrap();
+                let best_h = problem.heuristic(&best_s);
+
                 return AttemptResult::new(best_s, best_h, iter);
             }
         }
