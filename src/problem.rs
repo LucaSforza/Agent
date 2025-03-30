@@ -82,3 +82,30 @@ where
         state
     }
 }
+
+pub trait Crossover: Problem {
+    fn crossover<R: Rng + ?Sized>(
+        &self,
+        rng: &mut R,
+        state: &Self::State,
+        other: &Self::State,
+    ) -> Self::State;
+}
+
+pub trait MutateGene: Problem {
+    fn mutate_gene<R: Rng + ?Sized>(&self, rng: &mut R, state: &Self::State) -> Self::State;
+}
+
+impl<T> MutateGene for T
+where
+    T: ModifyState<State: Clone>,
+{
+    fn mutate_gene<R: Rng + ?Sized>(&self, rng: &mut R, state: &Self::State) -> Self::State {
+        let action = self.random_modify_action(rng, state);
+        if let Some(action) = action {
+            self.modify(state, &action)
+        } else {
+            state.clone()
+        }
+    }
+}
