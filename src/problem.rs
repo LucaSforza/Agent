@@ -82,3 +82,9 @@ where
         state
     }
 }
+
+pub trait Genetic: Problem {
+    type Index;
+
+    fn merge(&self, i: Self::Index, state: &Self::State, other: &Self::State) -> Self::State;
+}
