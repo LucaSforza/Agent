@@ -6,7 +6,7 @@ use agent::iterative_improvement::{
     GeneticAlgorithm, HillClimbing, ImprovingAlgorithm, LocalBeam, Resolver, SimulatedAnnealing,
     SteepestDescend,
 };
-use agent::problem::{Crossover, ModifyState, Problem, Utility, WithSolution};
+use agent::problem::{Crossover, Problem, StatePerturbation, Utility, WithSolution};
 
 use ordered_float::OrderedFloat;
 
@@ -204,14 +204,14 @@ impl Iterator for MoveQueenIterator {
     }
 }
 
-impl ModifyState for NQueen {
-    type ModifyAction = MoveQueen;
+impl StatePerturbation for NQueen {
+    type Perturbation = MoveQueen;
 
-    fn modify_actions(&self, _state: &Self::State) -> impl Iterator<Item = Self::ModifyAction> {
+    fn perturbations(&self, _state: &Self::State) -> impl Iterator<Item = Self::Perturbation> {
         MoveQueenIterator::new(self.n)
     }
 
-    fn modify(&self, state: &Self::State, action: &Self::ModifyAction) -> Self::State {
+    fn perturb(&self, state: &Self::State, action: &Self::Perturbation) -> Self::State {
         state.move_queen(action)
     }
 }

@@ -18,31 +18,31 @@ pub trait WithSolution: Problem {
     fn is_goal(&self, state: &Self::State) -> bool;
 }
 
-pub trait ModifyState: Problem {
-    type ModifyAction;
+pub trait StatePerturbation: Problem {
+    type Perturbation;
 
-    fn modify_actions(&self, state: &Self::State) -> impl Iterator<Item = Self::ModifyAction>;
-    fn modify(&self, state: &Self::State, action: &Self::ModifyAction) -> Self::State;
+    fn perturbations(&self, state: &Self::State) -> impl Iterator<Item = Self::Perturbation>;
+    fn perturb(&self, state: &Self::State, action: &Self::Perturbation) -> Self::State;
 }
 
-pub trait ModifyRandom: ModifyState {
-    fn random_modify_action<R: Rng + ?Sized>(
+pub trait RandomPerturbation: StatePerturbation {
+    fn random_pertubation<R: Rng + ?Sized>(
         &self,
         rng: &mut R,
         state: &Self::State,
-    ) -> Option<Self::ModifyAction>;
+    ) -> Option<Self::Perturbation>;
 }
 
-impl<T> ModifyRandom for T
+impl<T> RandomPerturbation for T
 where
-    T: ModifyState,
+    T: StatePerturbation,
 {
-    fn random_modify_action<R: Rng + ?Sized>(
+    fn random_pertubation<R: Rng + ?Sized>(
         &self,
         rng: &mut R,
         state: &Self::State,
-    ) -> Option<Self::ModifyAction> {
-        self.modify_actions(state).choose(rng)
+    ) -> Option<Self::Perturbation> {
+        self.perturbations(state).choose(rng)
     }
 }
 
@@ -98,12 +98,12 @@ pub trait MutateGene: Problem {
 
 impl<T> MutateGene for T
 where
-    T: ModifyState<State: Clone>,
+    T: RandomPerturbation<State: Clone>,
 {
     fn mutate_gene<R: Rng + ?Sized>(&self, rng: &mut R, state: &Self::State) -> Self::State {
-        let action = self.random_modify_action(rng, state);
+        let action = self.random_pertubation(rng, state);
         if let Some(action) = action {
-            self.modify(state, &action)
+            self.perturb(state, &action)
         } else {
             state.clone()
         }
