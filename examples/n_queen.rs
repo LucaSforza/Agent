@@ -1,14 +1,15 @@
 use std::fmt;
 use std::time::Duration;
 
-use agent::explorer::resolver::{AStarExplorer, BestFirstGreedyExplorer, MinCostExplorer};
-use agent::iterative_improvement::{
-    GeneticAlgorithm, HillClimbing, ImprovingAlgorithm, LocalBeam, Resolver, SimulatedAnnealing,
-    SteepestDescend,
+use agent::improve::{
+    algorithms::GeneticAlgorithm, algorithms::HillClimbing, algorithms::ImprovingAlgorithm,
+    algorithms::LocalBeam, algorithms::SimulatedAnnealing, algorithms::SteepestDescend,
+    resolver::Resolver,
 };
 use agent::problem::{
     CostructSolution, Crossover, Problem, StatePerturbation, SuitableState, Utility,
 };
+use agent::statexplorer::resolver::{AStarExplorer, BestFirstGreedyExplorer, MinCostExplorer};
 
 use ordered_float::OrderedFloat;
 

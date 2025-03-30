@@ -1,3 +1,3 @@
-pub mod explorer;
-pub mod iterative_improvement;
+pub mod improve;
 pub mod problem;
+pub mod statexplorer;

@@ -3,8 +3,8 @@ mod tests {
     use std::vec;
 
     use agent::{
-        explorer::resolver::{BFSExplorer, DFSExplorer},
         problem::{CostructSolution, Problem, SuitableState, Utility},
+        statexplorer::resolver::{BFSExplorer, DFSExplorer},
     };
     // use frontier::DequeFrontier;
 
