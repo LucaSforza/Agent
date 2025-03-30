@@ -3,9 +3,12 @@ use std::time::Duration;
 
 use agent::explorer::{AStarExplorer, BestFirstGreedyExplorer, MinCostExplorer};
 use agent::iterative_improvement::{
-    HillClimbing, ImprovingAlgorithm, Resolver, SimulatedAnnealing, SteepestDescend,
+    GeneticAlgorithm, HillClimbing, ImprovingAlgorithm, LocalBeam, Resolver, SimulatedAnnealing,
+    SteepestDescend,
 };
-use agent::problem::{ModifyState, Problem, Utility, WithSolution};
+use agent::problem::{Crossover, ModifyState, Problem, Utility, WithSolution};
+
+use ordered_float::OrderedFloat;
 
 type NextQueenPos = usize;
 
@@ -122,8 +125,6 @@ impl NQueen {
     }
 }
 
-use ordered_float::OrderedFloat;
-
 impl Problem for NQueen {
     type State = DeploymentQueens;
     type Action = NextQueenPos;
@@ -215,6 +216,21 @@ impl ModifyState for NQueen {
     }
 }
 
+impl Crossover for NQueen {
+    fn crossover<R: rand::Rng + ?Sized>(
+        &self,
+        rng: &mut R,
+        state: &Self::State,
+        other: &Self::State,
+    ) -> Self::State {
+        // TODO: move the board in such a way as to minimize attacks
+        let crossover_point = rng.random_range(0..self.n);
+        let mut new_pos = state.pos[..crossover_point].to_vec();
+        new_pos.extend_from_slice(&other.pos[crossover_point..]);
+        Self::State::new(new_pos)
+    }
+}
+
 fn resolve_nqueen<A: ImprovingAlgorithm<NQueen>>(
     problem: &NQueen,
     resolver: &mut Resolver<A, NQueen>,
@@ -285,6 +301,21 @@ fn run_one_time_nqueen(size: usize, n_restarts: usize) {
     println!("\nSimulated Annealing:");
     let mut resolver = Resolver::new(SimulatedAnnealing::new(rand::rng()));
     run_one_time_nqueen_algo(&problem, &mut resolver, n_restarts);
+
+    println!("Local Beam:");
+    let mut resolver = Resolver::new(LocalBeam::from_parts(rand::rng(), 20, 100.into()));
+    run_one_time_nqueen_algo(&problem, &mut resolver, n_restarts);
+
+    println!("Genetic Algorithm:");
+
+    let mut resolver = Resolver::new(GeneticAlgorithm::from_parts(
+        rand::rng(),
+        20,
+        100.into(),
+        0.8,
+    ));
+
+    run_one_time_nqueen_algo(&problem, &mut resolver, n_restarts);
 }
 
 fn run_nqueen(n: usize, iterations: u32, restarts: usize) {
@@ -304,6 +335,19 @@ fn run_nqueen(n: usize, iterations: u32, restarts: usize) {
     let mut resolver = Resolver::new(SimulatedAnnealing::new(rand::rng()));
     resolve_nqueen(&problem, &mut resolver, iterations);
     resolve_restart_nqueen(&problem, &mut resolver, iterations, restarts);
+
+    println!("Local Beam:");
+    let mut resolver = Resolver::new(LocalBeam::from_parts(rand::rng(), 20, 100.into()));
+    resolve_nqueen(&problem, &mut resolver, iterations);
+
+    println!("Genetic Algorithm:");
+    let mut resolver = Resolver::new(GeneticAlgorithm::from_parts(
+        rand::rng(),
+        20,
+        100.into(),
+        0.8,
+    ));
+    resolve_nqueen(&problem, &mut resolver, iterations);
 }
 
 fn run_nqueen_explorer(n: usize) {
@@ -332,7 +376,7 @@ fn run_nqueen_explorer(n: usize) {
 }
 
 fn main() {
-    run_nqueen(8, 100, 10);
+    run_nqueen(8, 2500, 10);
     run_one_time_nqueen(8, 10);
 
     run_nqueen_explorer(8);

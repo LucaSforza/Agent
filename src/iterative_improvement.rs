@@ -1,12 +1,19 @@
 use core::fmt;
 use std::{
+    cmp::Reverse,
+    collections::BinaryHeap,
     marker::PhantomData,
     ops::Sub,
     time::{Duration, Instant},
 };
 
+use ordered_float::OrderedFloat;
 use rand::Rng;
-use rand_distr::num_traits::Signed;
+use rand_distr::{
+    num_traits::{Inv, Signed},
+    weighted::WeightedIndex,
+    Distribution,
+};
 
 use crate::problem::*;
 
@@ -312,5 +319,188 @@ where
         }
 
         unreachable!()
+    }
+}
+
+struct Node<P>(Reverse<P::Cost>, P::State)
+where
+    P: Problem;
+
+impl<P> PartialEq for Node<P>
+where
+    P: Problem,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
+    }
+}
+
+impl<P> Eq for Node<P> where P: Problem {}
+
+impl<P> PartialOrd for Node<P>
+where
+    P: Problem,
+{
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.0.partial_cmp(&other.0)
+    }
+}
+
+impl<P> Ord for Node<P>
+where
+    P: Problem,
+{
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.0.cmp(&other.0)
+    }
+}
+pub struct LocalBeam<R: Rng> {
+    rng: R,
+    k: usize,
+    max_iter: Option<usize>,
+}
+
+impl<R: Rng> LocalBeam<R> {
+    pub fn from_parts(rng: R, k: usize, max_iter: Option<usize>) -> Self {
+        Self {
+            rng: rng,
+            k: k,
+            max_iter: max_iter,
+        }
+    }
+}
+
+impl<R, P> ImprovingAlgorithm<P> for LocalBeam<R>
+where
+    R: Rng,
+    P: Utility + ModifyState + RandomizeState<State: Default>,
+{
+    fn attempt(&mut self, problem: &P) -> AttemptResult<P> {
+        let mut current_pop = Vec::with_capacity(self.k);
+        for _ in 0..self.k {
+            current_pop.push(problem.random_state(&mut self.rng));
+        }
+        let mut iter = 0;
+        let mut succ: BinaryHeap<Node<P>> = BinaryHeap::new();
+        loop {
+            iter += 1;
+            succ.clear();
+            for s in current_pop.iter() {
+                for a in problem.modify_actions(s) {
+                    let next_s = problem.modify(s, &a);
+                    let next_h = problem.heuristic(&next_s);
+                    if next_h <= Default::default() {
+                        return AttemptResult::new(next_s, next_h, iter);
+                    } else {
+                        succ.push(Node(Reverse(next_h), next_s));
+                    }
+                }
+            }
+
+            if self.max_iter.map_or(false, |max| max < iter) {
+                let node = succ
+                    .pop()
+                    .unwrap_or(Node(Default::default(), Default::default()));
+                return AttemptResult::new(node.1, node.0 .0, iter);
+            }
+
+            current_pop.clear();
+            for _ in 0..self.k {
+                let next_s = succ.pop().map(|n| n.1);
+                if let Some(next_s) = next_s {
+                    current_pop.push(next_s);
+                } else {
+                    break;
+                }
+            }
+            if current_pop.len() == 0 {
+                // TODO: make sure that AttemptResult returns a failure
+                return AttemptResult::new(Default::default(), Default::default(), iter);
+            }
+        }
+    }
+}
+
+pub struct GeneticAlgorithm<R: Rng> {
+    rng: R,
+    k: usize,
+    max_iter: Option<usize>,
+    pmut: f64,
+}
+
+impl<R: Rng> GeneticAlgorithm<R> {
+    pub fn from_parts(rng: R, k: usize, max_iter: Option<usize>, pmut: f64) -> Self {
+        Self {
+            rng: rng,
+            k: k,
+            max_iter: max_iter,
+            pmut: pmut,
+        }
+    }
+}
+
+impl<R, P> ImprovingAlgorithm<P> for GeneticAlgorithm<R>
+where
+    R: Rng,
+    P: MutateGene + Utility + RandomizeState + Crossover<Cost: From<f64> + Into<f64>>,
+{
+    fn attempt(&mut self, problem: &P) -> AttemptResult<P> {
+        let mut current_pop = Vec::with_capacity(self.k);
+        let mut current_weights: Vec<f64> = Vec::with_capacity(self.k);
+        for _ in 0..self.k {
+            let state = problem.random_state(&mut self.rng);
+            let h = problem.heuristic(&state);
+            if h <= Default::default() {
+                return AttemptResult::new(state, h, 0);
+            }
+            current_pop.push(state);
+            current_weights.push(h.into().inv()); // TODO: aggiungi reverse
+        }
+        let mut iter = 0;
+        let mut distr =
+            WeightedIndex::new(&current_weights).expect("Failed to create WeightedIndex");
+        loop {
+            let mut new_pop = Vec::with_capacity(self.k);
+            let mut new_weights = Vec::with_capacity(self.k);
+            iter += 1;
+            while new_pop.len() < self.k {
+                let parent1 = &current_pop[distr.sample(&mut self.rng)];
+                let parent2 = &current_pop[distr.sample(&mut self.rng)];
+
+                let mut child = problem.crossover(&mut self.rng, parent1, parent2);
+
+                let r: f64 = self.rng.random();
+
+                if r <= self.pmut {
+                    problem.mutate_gene(&mut self.rng, &mut child);
+                }
+
+                let child_h = problem.heuristic(&child);
+
+                if child_h <= Default::default() {
+                    return AttemptResult::new(child, child_h, iter);
+                }
+
+                new_pop.push(child);
+                new_weights.push(child_h.into().inv());
+            }
+
+            current_pop = new_pop;
+            current_weights = new_weights;
+            distr = WeightedIndex::new(&current_weights).unwrap();
+
+            // Stop if max iterations reached
+            if self.max_iter.map_or(false, |max| max <= iter) {
+                let best_s = current_pop
+                    .into_iter()
+                    .zip(current_weights.into_iter())
+                    .min_by_key(|(_, h)| OrderedFloat(*h))
+                    .map(|(x, _)| x)
+                    .unwrap();
+                let best_h = problem.heuristic(&best_s);
+
+                return AttemptResult::new(best_s, best_h, iter);
+            }
+        }
     }
 }
