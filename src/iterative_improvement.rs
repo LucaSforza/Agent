@@ -368,7 +368,7 @@ impl<R: Rng> LocalBeam<R> {
 impl<R, P> ImprovingAlgorithm<P> for LocalBeam<R>
 where
     R: Rng,
-    P: Utility + ModifyState + RandomizeState + Problem<State: Default>,
+    P: Utility + ModifyState + RandomizeState<State: Default>,
 {
     fn attempt(&mut self, problem: &P) -> AttemptResult<P> {
         let mut current_pop = Vec::with_capacity(self.k);

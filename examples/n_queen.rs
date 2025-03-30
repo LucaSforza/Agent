@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use agent::explorer::{AStarExplorer, BestFirstGreedyExplorer, MinCostExplorer};
 use agent::iterative_improvement::{
-    HillClimbing, ImprovingAlgorithm, Resolver, SimulatedAnnealing, SteepestDescend,
+    HillClimbing, ImprovingAlgorithm, LocalBeam, Resolver, SimulatedAnnealing, SteepestDescend,
 };
 use agent::problem::{ModifyState, Problem, Utility, WithSolution};
 
@@ -285,6 +285,10 @@ fn run_one_time_nqueen(size: usize, n_restarts: usize) {
     println!("\nSimulated Annealing:");
     let mut resolver = Resolver::new(SimulatedAnnealing::new(rand::rng()));
     run_one_time_nqueen_algo(&problem, &mut resolver, n_restarts);
+
+    println!("Local Beam:");
+    let mut resolver = Resolver::new(LocalBeam::from_parts(rand::rng(), 20, 100.into()));
+    run_one_time_nqueen_algo(&problem, &mut resolver, n_restarts);
 }
 
 fn run_nqueen(n: usize, iterations: u32, restarts: usize) {
@@ -304,6 +308,10 @@ fn run_nqueen(n: usize, iterations: u32, restarts: usize) {
     let mut resolver = Resolver::new(SimulatedAnnealing::new(rand::rng()));
     resolve_nqueen(&problem, &mut resolver, iterations);
     resolve_restart_nqueen(&problem, &mut resolver, iterations, restarts);
+
+    println!("Local Beam:");
+    let mut resolver = Resolver::new(LocalBeam::from_parts(rand::rng(), 20, 100.into()));
+    resolve_nqueen(&problem, &mut resolver, iterations);
 }
 
 fn run_nqueen_explorer(n: usize) {
@@ -332,7 +340,7 @@ fn run_nqueen_explorer(n: usize) {
 }
 
 fn main() {
-    run_nqueen(8, 100, 10);
+    run_nqueen(8, 2500, 10);
     run_one_time_nqueen(8, 10);
 
     run_nqueen_explorer(8);
