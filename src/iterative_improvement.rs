@@ -8,7 +8,12 @@ use std::{
 };
 
 use rand::Rng;
-use rand_distr::num_traits::Signed;
+use rand_distr::{
+    num_traits::{Inv, Signed},
+    uniform::SampleUniform,
+    weighted::{Weight, WeightedIndex},
+    Distribution,
+};
 
 use crate::problem::*;
 
@@ -411,6 +416,73 @@ where
             if current_pop.len() == 0 {
                 // TODO: make sure that AttemptResult returns a failure
                 return AttemptResult::new(Default::default(), Default::default(), iter);
+            }
+        }
+    }
+}
+
+pub struct GeneticAlgorithm<R: Rng> {
+    rng: R,
+    k: usize,
+    max_iter: Option<usize>,
+    pmut: f64,
+}
+
+impl<R, P> ImprovingAlgorithm<P> for GeneticAlgorithm<R>
+where
+    R: Rng,
+    P: Utility + RandomizeState + Genetic<Cost: Weight + SampleUniform + Inv<Output = P::Cost>>,
+{
+    fn attempt(&mut self, problem: &P) -> AttemptResult<P> {
+        let mut current_pop = Vec::with_capacity(self.k);
+        let mut current_weights = Vec::with_capacity(self.k);
+        for _ in 0..self.k {
+            let state = problem.random_state(&mut self.rng);
+            let h = problem.heuristic(&state);
+            current_pop.push(state);
+            current_weights.push(h.inv()); // TODO: aggiungi reverse
+        }
+        let mut iter = 0;
+        let mut distr =
+            WeightedIndex::new(&current_weights).expect("Failed to create WeightedIndex");
+        loop {
+            let mut new_pop = Vec::with_capacity(self.k);
+            let mut new_weights = Vec::with_capacity(self.k);
+            iter += 1;
+            while new_pop.len() < self.k {
+                let parent1 = &current_pop[distr.sample(&mut self.rng)];
+                let parent2 = &current_pop[distr.sample(&mut self.rng)];
+
+                let mut child = problem.crossover(&mut self.rng, parent1, parent2);
+
+                let r: f64 = self.rng.random();
+
+                if r <= self.pmut {
+                    problem.mutate_gene(&mut self.rng, &mut child);
+                }
+
+                let child_h = problem.heuristic(&child);
+
+                if child_h <= Default::default() {
+                    return AttemptResult::new(child, child_h, iter);
+                }
+
+                new_pop.push(child);
+                new_weights.push(child_h.inv());
+            }
+
+            current_pop = new_pop;
+            current_weights = new_weights;
+            distr = WeightedIndex::new(&current_weights).unwrap();
+
+            // Stop if max iterations reached
+            if self.max_iter.map_or(false, |max| max <= iter) {
+                let (best_s, best_h) = current_pop
+                    .into_iter()
+                    .zip(current_weights.into_iter())
+                    .min_by_key(|(_, h)| *h)
+                    .unwrap();
+                return AttemptResult::new(best_s, best_h, iter);
             }
         }
     }

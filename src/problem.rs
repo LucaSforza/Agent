@@ -84,7 +84,12 @@ where
 }
 
 pub trait Genetic: Problem {
-    type Index;
+    fn crossover<R: Rng + ?Sized>(
+        &self,
+        rng: &mut R,
+        state: &Self::State,
+        other: &Self::State,
+    ) -> Self::State;
 
-    fn merge(&self, i: Self::Index, state: &Self::State, other: &Self::State) -> Self::State;
+    fn mutate_gene<R: Rng + ?Sized>(&self, rng: &mut R, state: &mut Self::State);
 }
