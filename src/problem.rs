@@ -3,6 +3,22 @@ use rand_distr::num_traits::Num;
 
 pub trait Problem {
     type State;
+}
+
+pub trait InitState: Problem {
+    fn init_state(&self) -> Self::State;
+}
+
+impl<T> InitState for T
+where
+    T: Problem<State: Default>,
+{
+    fn init_state(&self) -> Self::State {
+        Default::default()
+    }
+}
+
+pub trait CostructSolution: Problem {
     type Action;
     type Cost: Default + Copy + Ord + Num;
 
@@ -10,12 +26,12 @@ pub trait Problem {
     fn result(&self, state: &Self::State, action: &Self::Action) -> (Self::State, Self::Cost);
 }
 
-pub trait Utility: Problem {
+pub trait Utility: CostructSolution {
     fn heuristic(&self, state: &Self::State) -> Self::Cost;
 }
 
-pub trait WithSolution: Problem {
-    fn is_goal(&self, state: &Self::State) -> bool;
+pub trait SuitableState: Problem {
+    fn is_suitable(&self, state: &Self::State) -> bool;
 }
 
 pub trait StatePerturbation: Problem {
@@ -46,19 +62,17 @@ where
     }
 }
 
-pub trait RandomizeState: Problem {
+pub trait RandomAction: CostructSolution {
     fn random_action<R: Rng + ?Sized>(
         &self,
         rng: &mut R,
         state: &Self::State,
     ) -> Option<Self::Action>;
-
-    fn random_state<R: Rng + ?Sized>(&self, rng: &mut R) -> Self::State;
 }
 
-impl<T> RandomizeState for T
+impl<T> RandomAction for T
 where
-    T: WithSolution + Problem<State: Default>,
+    T: CostructSolution,
 {
     fn random_action<R: Rng + ?Sized>(
         &self,
@@ -67,15 +81,24 @@ where
     ) -> Option<Self::Action> {
         self.executable_actions(state).choose(rng)
     }
+}
 
+pub trait RandomState: CostructSolution {
+    fn random_state<R: Rng + ?Sized>(&self, rng: &mut R) -> Self::State;
+}
+
+impl<T> RandomState for T
+where
+    T: SuitableState + RandomAction + InitState,
+{
     fn random_state<R: Rng + ?Sized>(&self, rng: &mut R) -> Self::State {
         // TODO: What if the while loop runs indefinitely?
-        let mut state = Default::default();
-        while !self.is_goal(&state) {
+        let mut state = self.init_state();
+        while !self.is_suitable(&state) {
             if let Some(action) = self.random_action(rng, &state) {
                 state = self.result(&state, &action).0;
             } else {
-                state = Default::default()
+                state = self.init_state();
             }
         }
 

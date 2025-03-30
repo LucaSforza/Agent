@@ -19,7 +19,7 @@ use crate::problem::*;
 
 pub struct AttemptResult<P>
 where
-    P: Problem,
+    P: CostructSolution,
 {
     pub state: P::State,
     pub h: P::Cost,
@@ -28,7 +28,7 @@ where
 
 impl<P> AttemptResult<P>
 where
-    P: Problem,
+    P: CostructSolution,
 {
     pub fn new(state: P::State, h: P::Cost, iterations: usize) -> Self {
         Self {
@@ -41,7 +41,7 @@ where
 
 pub struct ResolverResult<P>
 where
-    P: Problem,
+    P: CostructSolution,
 {
     pub state: P::State,
     pub h: P::Cost,
@@ -51,7 +51,7 @@ where
 
 impl<P> fmt::Debug for ResolverResult<P>
 where
-    P: Problem<State: fmt::Debug, Cost: fmt::Debug>,
+    P: CostructSolution<State: fmt::Debug, Cost: fmt::Debug>,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "state:\n{:?}", self.state)?;
@@ -63,7 +63,7 @@ where
 
 impl<P> ResolverResult<P>
 where
-    P: Problem,
+    P: CostructSolution,
 {
     pub fn from_inner(start: Instant, inner: AttemptResult<P>) -> Self {
         Self {
@@ -77,7 +77,7 @@ where
 
 pub struct Resolver<I, P>
 where
-    P: Problem,
+    P: CostructSolution,
     I: ImprovingAlgorithm<P>,
 {
     algo: I,
@@ -86,7 +86,7 @@ where
 
 impl<I, P> Resolver<I, P>
 where
-    P: RandomizeState + Utility,
+    P: RandomState + Utility,
     I: ImprovingAlgorithm<P>,
 {
     pub fn new(algo: I) -> Self {
@@ -99,7 +99,7 @@ where
 
 impl<I, P> Resolver<I, P>
 where
-    P: Problem,
+    P: CostructSolution,
     I: ImprovingAlgorithm<P>,
 {
     pub fn resolve(&mut self, problem: &P) -> ResolverResult<P> {
@@ -133,7 +133,7 @@ where
 
 pub trait ImprovingAlgorithm<P>
 where
-    P: Problem,
+    P: CostructSolution,
 {
     fn attempt(&mut self, problem: &P) -> AttemptResult<P>;
 }
@@ -151,7 +151,7 @@ impl<R: Rng> SteepestDescend<R> {
 impl<R, P> ImprovingAlgorithm<P> for SteepestDescend<R>
 where
     R: Rng,
-    P: StatePerturbation + Utility + RandomizeState<State: Clone>,
+    P: StatePerturbation + Utility + RandomState<State: Clone>,
 {
     fn attempt(&mut self, problem: &P) -> AttemptResult<P> {
         let mut iterations = 0;
@@ -231,7 +231,7 @@ where
 
 impl<P, R> ImprovingAlgorithm<P> for HillClimbing<R>
 where
-    P: StatePerturbation + Utility + RandomizeState<State: Clone>,
+    P: StatePerturbation + Utility + RandomState<State: Clone>,
     R: Rng,
 {
     fn attempt(&mut self, problem: &P) -> AttemptResult<P> {
@@ -285,9 +285,7 @@ use libm::exp;
 
 impl<R, P> ImprovingAlgorithm<P> for SimulatedAnnealing<R>
 where
-    P: RandomPerturbation
-        + Utility
-        + RandomizeState<Cost: Sub<Output = P::Cost> + Into<f64> + Signed>,
+    P: RandomPerturbation + Utility + RandomState<Cost: Sub<Output = P::Cost> + Into<f64> + Signed>,
     R: Rng,
 {
     fn attempt(&mut self, problem: &P) -> AttemptResult<P> {
@@ -326,22 +324,22 @@ where
 
 struct Node<P>(Reverse<P::Cost>, P::State)
 where
-    P: Problem;
+    P: CostructSolution;
 
 impl<P> PartialEq for Node<P>
 where
-    P: Problem,
+    P: CostructSolution,
 {
     fn eq(&self, other: &Self) -> bool {
         self.0 == other.0
     }
 }
 
-impl<P> Eq for Node<P> where P: Problem {}
+impl<P> Eq for Node<P> where P: CostructSolution {}
 
 impl<P> PartialOrd for Node<P>
 where
-    P: Problem,
+    P: CostructSolution,
 {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         self.0.partial_cmp(&other.0)
@@ -350,7 +348,7 @@ where
 
 impl<P> Ord for Node<P>
 where
-    P: Problem,
+    P: CostructSolution,
 {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.0.cmp(&other.0)
@@ -375,7 +373,7 @@ impl<R: Rng> LocalBeam<R> {
 impl<R, P> ImprovingAlgorithm<P> for LocalBeam<R>
 where
     R: Rng,
-    P: Utility + StatePerturbation + RandomizeState<State: Default>,
+    P: Utility + StatePerturbation + RandomState + CostructSolution + InitState,
 {
     fn attempt(&mut self, problem: &P) -> AttemptResult<P> {
         let mut current_pop = Vec::with_capacity(self.k);
@@ -402,7 +400,7 @@ where
             if self.max_iter.map_or(false, |max| max < iter) {
                 let node = succ
                     .pop()
-                    .unwrap_or(Node(Default::default(), Default::default()));
+                    .unwrap_or(Node(Default::default(), problem.init_state()));
                 return AttemptResult::new(node.1, node.0 .0, iter);
             }
 
@@ -417,7 +415,7 @@ where
             }
             if current_pop.len() == 0 {
                 // TODO: make sure that AttemptResult returns a failure
-                return AttemptResult::new(Default::default(), Default::default(), iter);
+                return AttemptResult::new(problem.init_state(), Default::default(), iter);
             }
         }
     }
@@ -444,7 +442,7 @@ impl<R: Rng> GeneticAlgorithm<R> {
 impl<R, P> ImprovingAlgorithm<P> for GeneticAlgorithm<R>
 where
     R: Rng,
-    P: MutateGene + Utility + RandomizeState + Crossover<Cost: From<f64> + Into<f64>>,
+    P: MutateGene + Utility<Cost: From<f64> + Into<f64>> + RandomState + Crossover,
 {
     fn attempt(&mut self, problem: &P) -> AttemptResult<P> {
         let mut current_pop = Vec::with_capacity(self.k);

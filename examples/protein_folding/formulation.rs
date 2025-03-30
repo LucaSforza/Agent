@@ -1,6 +1,6 @@
 use std::ops::{Deref, DerefMut};
 
-use agent::problem::{Problem, Utility, WithSolution};
+use agent::problem::{CostructSolution, Problem, SuitableState, Utility};
 use petgraph::graph::NodeIndex;
 
 #[derive(PartialEq, Eq, Clone)]
@@ -154,7 +154,7 @@ impl Board {
         &mut self,
         problem: &ProteinFolding,
         dir: Direction,
-    ) -> <ProteinFolding as Problem>::Cost {
+    ) -> <ProteinFolding as CostructSolution>::Cost {
         if self.index.len() == 0 {
             // Caso base
 
@@ -226,6 +226,9 @@ impl ProteinFolding {
 
 impl Problem for ProteinFolding {
     type State = Board;
+}
+
+impl CostructSolution for ProteinFolding {
     type Action = Direction;
     type Cost = u32;
 
@@ -263,8 +266,8 @@ impl Problem for ProteinFolding {
     }
 }
 
-impl WithSolution for ProteinFolding {
-    fn is_goal(&self, state: &Self::State) -> bool {
+impl SuitableState for ProteinFolding {
+    fn is_suitable(&self, state: &Self::State) -> bool {
         self.aminoacids.len() == state.index.len()
     }
 }
@@ -301,7 +304,7 @@ impl Utility for ProteinFolding {
         }
 
         // le distanze sono duplicate, divido per 2
-        let mut cost = (cost / 2.0).floor() as <ProteinFolding as Problem>::Cost;
+        let mut cost = (cost / 2.0).floor() as <ProteinFolding as CostructSolution>::Cost;
 
         // aggiungo al costo tutte le H non ancora posizionate, cosi quando sottraggo il risultato è consistente
         cost += (self

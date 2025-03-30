@@ -6,7 +6,9 @@ use agent::iterative_improvement::{
     GeneticAlgorithm, HillClimbing, ImprovingAlgorithm, LocalBeam, Resolver, SimulatedAnnealing,
     SteepestDescend,
 };
-use agent::problem::{Crossover, Problem, StatePerturbation, Utility, WithSolution};
+use agent::problem::{
+    CostructSolution, Crossover, Problem, StatePerturbation, SuitableState, Utility,
+};
 
 use ordered_float::OrderedFloat;
 
@@ -127,11 +129,14 @@ impl NQueen {
 
 impl Problem for NQueen {
     type State = DeploymentQueens;
+}
+
+impl CostructSolution for NQueen {
     type Action = NextQueenPos;
     type Cost = OrderedFloat<f64>;
 
     fn executable_actions(&self, state: &Self::State) -> impl Iterator<Item = Self::Action> {
-        if self.is_goal(state) {
+        if self.is_suitable(state) {
             NextQueenIterator::void_iter(self.n)
         } else {
             NextQueenIterator::new(self.n)
@@ -161,8 +166,8 @@ impl Utility for NQueen {
     }
 }
 
-impl WithSolution for NQueen {
-    fn is_goal(&self, state: &Self::State) -> bool {
+impl SuitableState for NQueen {
+    fn is_suitable(&self, state: &Self::State) -> bool {
         self.n == state.pos.len()
     }
 }

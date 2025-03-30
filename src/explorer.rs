@@ -119,7 +119,7 @@ pub enum Verbosity {
 
 pub struct Explorer<P, Backend>
 where
-    P: Utility + WithSolution, // TODO: generalize more
+    P: Utility + SuitableState, // TODO: generalize more
     Backend: FrontierBackend<P> + Debug,
 {
     verbosity: Verbosity,
@@ -130,7 +130,7 @@ where
 
 impl<P, Backend> Explorer<P, Backend>
 where
-    P: WithSolution + Utility<State: Eq + Hash + Clone + Debug, Action: Clone>,
+    P: SuitableState + Utility<State: Eq + Hash + Clone + Debug, Action: Clone>,
     Backend: FrontierBackend<P> + Debug,
 {
     pub fn with_verbosity(problem: P, verbosity: Verbosity) -> Self {
@@ -230,7 +230,7 @@ where
 
             let curr_state = curr_node.get_state();
 
-            if self.problem.is_goal(&curr_state) {
+            if self.problem.is_suitable(&curr_state) {
                 result = InnerResult::<P::State, P::Action>::found(
                     curr_node.get_state().clone(),
                     curr_node.get_plan().into(),

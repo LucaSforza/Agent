@@ -4,7 +4,7 @@ mod tests {
 
     use agent::{
         explorer::{BFSExplorer, DFSExplorer},
-        problem::{Problem, Utility, WithSolution},
+        problem::{CostructSolution, Problem, SuitableState, Utility},
     };
     // use frontier::DequeFrontier;
 
@@ -56,6 +56,9 @@ mod tests {
 
     impl Problem for CleanProblem {
         type State = HouseState;
+    }
+
+    impl CostructSolution for CleanProblem {
         type Action = Action;
         type Cost = OrderedFloat<f64>;
 
@@ -104,8 +107,8 @@ mod tests {
         }
     }
 
-    impl WithSolution for CleanProblem {
-        fn is_goal(&self, state: &Self::State) -> bool {
+    impl SuitableState for CleanProblem {
+        fn is_suitable(&self, state: &Self::State) -> bool {
             state.left_state == TailState::Clean && state.right_state == TailState::Clean
         }
     }
