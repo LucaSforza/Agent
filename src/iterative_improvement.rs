@@ -1,5 +1,7 @@
 use core::fmt;
 use std::{
+    cmp::Reverse,
+    collections::BinaryHeap,
     marker::PhantomData,
     ops::Sub,
     time::{Duration, Instant},
@@ -312,5 +314,104 @@ where
         }
 
         unreachable!()
+    }
+}
+
+struct Node<P>(Reverse<P::Cost>, P::State)
+where
+    P: Problem;
+
+impl<P> PartialEq for Node<P>
+where
+    P: Problem,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
+    }
+}
+
+impl<P> Eq for Node<P> where P: Problem {}
+
+impl<P> PartialOrd for Node<P>
+where
+    P: Problem,
+{
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.0.partial_cmp(&other.0)
+    }
+}
+
+impl<P> Ord for Node<P>
+where
+    P: Problem,
+{
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.0.cmp(&other.0)
+    }
+}
+pub struct LocalBeam<R: Rng> {
+    rng: R,
+    k: usize,
+    max_iter: Option<usize>,
+}
+
+impl<R: Rng> LocalBeam<R> {
+    pub fn from_parts(rng: R, k: usize, max_iter: Option<usize>) -> Self {
+        Self {
+            rng: rng,
+            k: k,
+            max_iter: max_iter,
+        }
+    }
+}
+
+impl<R, P> ImprovingAlgorithm<P> for LocalBeam<R>
+where
+    R: Rng,
+    P: Utility + ModifyState + RandomizeState + Problem<State: Default>,
+{
+    fn attempt(&mut self, problem: &P) -> AttemptResult<P> {
+        let mut current_pop = Vec::with_capacity(self.k);
+        for _ in 0..self.k {
+            current_pop.push(problem.random_state(&mut self.rng));
+        }
+        let mut iter = 0;
+        let mut succ: BinaryHeap<Node<P>> = BinaryHeap::new();
+        loop {
+            iter += 1;
+            succ.clear();
+            for s in current_pop.iter() {
+                for a in problem.modify_actions(s) {
+                    let next_s = problem.modify(s, &a);
+                    let next_h = problem.heuristic(&next_s);
+                    if next_h <= Default::default() {
+                        return AttemptResult::new(next_s, next_h, iter);
+                    } else {
+                        succ.push(Node(Reverse(next_h), next_s));
+                    }
+                }
+            }
+
+            if self.max_iter.map_or(false, |max| max < iter) {
+                let node = succ
+                    .pop()
+                    .unwrap_or(Node(Default::default(), Default::default()));
+                return AttemptResult::new(node.1, node.0 .0, iter);
+            }
+
+            current_pop.clear();
+            for _ in 0..self.k {
+                let next_s = succ.pop().map(|n| n.1);
+                if let Some(next_s) = next_s {
+                    current_pop.push(next_s);
+                } else {
+                    break;
+                }
+            }
+            if current_pop.len() == 0 {
+                // TODO: make sure that AttemptResult returns a failure
+                return AttemptResult::new(Default::default(), Default::default(), iter);
+            }
+        }
     }
 }
