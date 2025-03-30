@@ -1,7 +1,7 @@
 use std::fmt;
 use std::time::Duration;
 
-use agent::explorer::{AStarExplorer, BestFirstGreedyExplorer, MinCostExplorer};
+use agent::explorer::resolver::{AStarExplorer, BestFirstGreedyExplorer, MinCostExplorer};
 use agent::iterative_improvement::{
     GeneticAlgorithm, HillClimbing, ImprovingAlgorithm, LocalBeam, Resolver, SimulatedAnnealing,
     SteepestDescend,

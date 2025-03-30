@@ -3,10 +3,10 @@ mod formulation;
 use std::collections::{HashMap, HashSet};
 
 use agent::{
-    explorer::Explorer,
-    frontier::{
+    explorer::frontier::{
         AStarBackend, BestFirstBackend, DequeBackend, FrontierBackend, MinCostBackend, StackBackend,
     },
+    explorer::resolver::Explorer,
 };
 use formulation::{AminoAcid, Board, Direction, ProteinFolding};
 

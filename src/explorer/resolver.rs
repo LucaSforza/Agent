@@ -6,14 +6,12 @@ use std::{
     time::{Duration, Instant},
 };
 
-use crate::{
-    explorer_node::Node,
-    frontier::{
-        AStarBackend, BestFirstBackend, DequeBackend, Frontier, FrontierBackend, MinCostBackend,
-        StackBackend,
-    },
-    problem::*,
+use crate::explorer::frontier::{
+    AStarBackend, BestFirstBackend, DequeBackend, Frontier, FrontierBackend, MinCostBackend,
+    StackBackend,
 };
+use crate::explorer::node::Node;
+use crate::problem::*;
 
 struct InnerResult<State, Action>
 where

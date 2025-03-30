@@ -3,7 +3,7 @@ mod tests {
     use std::rc::Rc;
 
     use agent::{
-        explorer::{
+        explorer::resolver::{
             AStarExplorer, BFSExplorer, BestFirstGreedyExplorer, DFSExplorer, MinCostExplorer,
         },
         problem::{CostructSolution, Problem, SuitableState, Utility},
