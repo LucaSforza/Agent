@@ -1,6 +1,6 @@
 use std::ops::{Deref, DerefMut};
 
-use agent::problem::{CostructSolution, Problem, SuitableState, Utility};
+use agent::problem::{CostructSolution, InitState, Problem, SuitableState, Utility};
 use petgraph::graph::NodeIndex;
 
 #[derive(PartialEq, Eq, Clone)]
@@ -10,7 +10,7 @@ pub enum AminoAcid {
 }
 
 #[derive(Clone, Copy, Hash, Debug, PartialEq, Eq)]
-pub enum Direction {
+pub enum Dir {
     Up,
     Down,
     Left,
@@ -28,16 +28,16 @@ impl Pos {
         Self { x: 0, y: 0 }
     }
 
-    fn move_dir(&mut self, dir: Direction) {
+    fn move_dir(&mut self, dir: Dir) {
         match dir {
-            Direction::Up => self.x -= 1,
-            Direction::Down => self.x += 1,
-            Direction::Left => self.y -= 1,
-            Direction::Right => self.y += 1,
+            Dir::Up => self.x -= 1,
+            Dir::Down => self.x += 1,
+            Dir::Left => self.y -= 1,
+            Dir::Right => self.y += 1,
         }
     }
 
-    fn clone_move(&self, dir: Direction) -> Self {
+    fn clone_move(&self, dir: Dir) -> Self {
         let mut new_pos = self.clone();
         new_pos.move_dir(dir);
         return new_pos;
@@ -48,8 +48,9 @@ use petgraph::{Graph, Undirected};
 
 #[derive(Clone)]
 pub struct Board {
-    protein: Graph<Pos, Direction, Undirected, u32>,
+    protein: Graph<Pos, Dir, Undirected, u32>,
     index: Vec<NodeIndex>,
+    has_turned: bool,
 }
 
 impl std::hash::Hash for Board {
@@ -79,22 +80,17 @@ impl Eq for Board {}
 
 impl std::fmt::Debug for Board {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.index.len())
+        writeln!(f, "TODO: fare la stampa")
     }
 }
 
 impl Board {
     fn new() -> Self {
         Self {
+            has_turned: false,
             protein: Default::default(),
             index: Vec::new(),
         }
-    }
-
-    pub fn init_state(problem: &ProteinFolding) -> Self {
-        let mut board = Self::new();
-        board.add_pos(problem, Direction::Down); // Non importa quale sia la direzione iniziale, tanto non farà neanche parte del risultato
-        board
     }
 
     fn suitable(&self, pos: &Pos) -> bool {
@@ -118,18 +114,14 @@ impl Board {
         &self.protein[*index]
     }
 
+    #[allow(dead_code)]
     fn contacts(&self, problem: &ProteinFolding) -> u32 {
         let mut total_contacts = 0;
 
         for (i, index) in self.index.iter().enumerate() {
             let amin = &self.protein[*index];
             if problem.aminoacids[i] == AminoAcid::H {
-                for dir in [
-                    Direction::Up,
-                    Direction::Down,
-                    Direction::Left,
-                    Direction::Right,
-                ] {
+                for dir in [Dir::Up, Dir::Down, Dir::Left, Dir::Right] {
                     let neighbor_pos = amin.clone_move(dir);
                     for (j, other_index) in self.index.iter().enumerate() {
                         if i != j
@@ -147,53 +139,73 @@ impl Board {
             }
         }
 
-        total_contacts // Each contact is counted twice, so divide by 2
+        total_contacts / 2 // Each contact is counted twice, so divide by 2
+    }
+
+    fn get_new_aminoacid(&self, problem: &ProteinFolding) -> AminoAcid {
+        problem.aminoacids[self.index.len()].clone()
+    }
+
+    fn cost_f(&self, problem: &ProteinFolding, last_pos: &Pos, new_pos: &Pos) -> u32 {
+        // assume the aminoacid is H
+        let max_attacts = 3;
+        let mut attacts = 0;
+        for (j, i) in self.index.iter().enumerate() {
+            let pos = self.protein[*i];
+            if pos == *last_pos {
+                continue;
+            }
+            if problem.aminoacids[j] == AminoAcid::H {
+                if pos.x.abs_diff(new_pos.x) + pos.y.abs_diff(new_pos.y) == 1 {
+                    attacts += 1;
+                }
+            }
+        }
+        max_attacts - attacts
     }
 
     fn add_pos(
         &mut self,
         problem: &ProteinFolding,
-        dir: Direction,
+        dir: Dir,
     ) -> <ProteinFolding as CostructSolution>::Cost {
         if self.index.len() == 0 {
             // Caso base
 
             let init_pos = Pos::new();
 
+            let cost;
+            if self.get_new_aminoacid(problem) == AminoAcid::H {
+                cost = 3;
+            } else {
+                cost = 0;
+            }
             let index = self.protein.add_node(init_pos);
             self.index.push(index);
-
-            return 0;
+            return cost;
         } else {
             // Passo induttivo
             // assumiamo che il nuovo aminoacido non sia sopra ad un altro (già controllo in executable_actions)
             // e comunque ci stanno degli assert che controllano questo requisito
-            let last_amin = self.get_last_aminoacid();
-            let new_pos = last_amin.clone_move(dir);
+            let last_pos = self.get_last_aminoacid();
+            let new_pos = last_pos.clone_move(dir);
+            let cost;
+            if self.get_new_aminoacid(problem) == AminoAcid::H {
+                cost = self.cost_f(problem, last_pos, &new_pos);
+            } else {
+                cost = 0;
+            }
             let b = self.protein.add_node(new_pos);
             self.protein.add_edge(*self.get_last_index(), b, dir);
             self.index.push(b);
 
-            let final_cost;
-            if self.index.len() == problem.aminoacids.len() {
-                let max_contacts = problem.h_numer * 3;
-                let contacts = self.contacts(problem);
-                assert!(max_contacts as i64 - contacts as i64 >= 0);
-                final_cost = max_contacts - contacts;
-            } else {
-                final_cost = 0;
-            }
-
-            return 1 + final_cost;
-            // Posso fare al piu due contatti per aminoacido H
-            // quindi se voglio minimizzare il costo per massimizzare i contatti
-            // allora sottraggo a 2 con il numero effettivo di contatti
+            return cost;
         }
     }
 }
 
 impl Deref for Board {
-    type Target = Graph<Pos, Direction, Undirected>;
+    type Target = Graph<Pos, Dir, Undirected>;
 
     fn deref(&self) -> &Self::Target {
         &self.protein
@@ -229,38 +241,45 @@ impl Problem for ProteinFolding {
 }
 
 impl CostructSolution for ProteinFolding {
-    type Action = Direction;
+    type Action = Dir;
     type Cost = u32;
 
     fn executable_actions(&self, state: &Self::State) -> impl Iterator<Item = Self::Action> {
         if state.index.len() == 1 {
             // non importa dove vado la prima volta
-            return vec![Direction::Up].into_iter();
+            return vec![Dir::Up].into_iter();
         }
 
         let last_aminoacid;
 
         last_aminoacid = state.get_last_aminoacid();
 
-        let mut actions = Vec::with_capacity(4);
-
-        for dir in vec![
-            Direction::Left,
-            Direction::Down,
-            Direction::Up,
-            Direction::Right,
-        ] {
-            if state.suitable(&last_aminoacid.clone_move(dir)) {
-                actions.push(dir);
+        let mut actions;
+        if state.has_turned {
+            actions = Vec::with_capacity(3);
+            for dir in vec![Dir::Left, Dir::Down, Dir::Up, Dir::Right] {
+                if state.suitable(&last_aminoacid.clone_move(dir)) {
+                    actions.push(dir);
+                }
+            }
+        } else {
+            // alla prima svolta considerare solo la destra
+            actions = Vec::with_capacity(2);
+            for dir in vec![Dir::Down, Dir::Up, Dir::Right] {
+                if state.suitable(&last_aminoacid.clone_move(dir)) {
+                    actions.push(dir);
+                }
             }
         }
-
         actions.into_iter()
     }
 
-    fn result(&self, board: &Self::State, direction: &Self::Action) -> (Self::State, Self::Cost) {
+    fn result(&self, board: &Self::State, dir: &Self::Action) -> (Self::State, Self::Cost) {
         let mut new_board = board.clone();
-        let cost = new_board.add_pos(self, *direction);
+        if *dir == Dir::Left || *dir == Dir::Right {
+            new_board.has_turned = true;
+        }
+        let cost = new_board.add_pos(self, *dir);
 
         (new_board, cost)
     }
@@ -318,5 +337,13 @@ impl Utility for ProteinFolding {
         // Se ogni H è stato posizionato con successo allora le loro distanze euclidiane sono 1
         // vengono sommate al costo e poi sottratte qua.
         cost - self.h_numer
+    }
+}
+
+impl InitState for ProteinFolding {
+    fn init_state(&self) -> Self::State {
+        let mut board = Self::State::new();
+        board.add_pos(self, Dir::Down); // Non importa quale sia la direzione iniziale, tanto non farà neanche parte del risultato
+        board
     }
 }

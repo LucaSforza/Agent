@@ -128,7 +128,7 @@ where
 
 impl<P, Backend> Explorer<P, Backend>
 where
-    P: SuitableState + Utility<State: Eq + Hash + Clone + Debug, Action: Clone>,
+    P: SuitableState + Utility<State: Eq + Hash + Clone + Debug, Action: Clone, Cost: Debug>,
     Backend: FrontierBackend<P> + Debug,
 {
     pub fn with_verbosity(problem: P, verbosity: Verbosity) -> Self {
@@ -222,11 +222,12 @@ where
         let result: InnerResult<P::State, P::Action>;
 
         let mut max_frontier_size = 0;
-        self.eprint_status(*n_iter);
         while let Some(curr_node) = self.frontier.dequeue() {
             *n_iter += 1;
 
             let curr_state = curr_node.get_state();
+
+            self.eprint_status(curr_state, curr_node.get_g_cost(), *n_iter);
 
             if self.problem.is_suitable(&curr_state) {
                 result = InnerResult::<P::State, P::Action>::found(
@@ -257,16 +258,17 @@ where
             if max_frontier_size < self.frontier.size() {
                 max_frontier_size = self.frontier.size();
             }
-            self.eprint_status(*n_iter);
         }
         result = InnerResult::<P::State, P::Action>::not_found(max_frontier_size);
         return result;
     }
 
-    fn eprint_status(&self, n_iter: usize) {
+    fn eprint_status(&self, curr_state: &P::State, cost: P::Cost, n_iter: usize) {
         if self.verbosity == Verbosity::Low {
-            eprintln!("iter: {} Frontier: {:?}", n_iter + 1, self.frontier,);
-            eprintln!("iter: {} Explored: {:?}", n_iter + 1, self.explored,)
+            eprintln!(
+                "I: {} cost: {:?} current state:\n{:?}",
+                n_iter, cost, curr_state
+            );
         }
     }
 }
