@@ -252,14 +252,23 @@ impl CostructSolution for ProteinFolding {
 
         last_aminoacid = state.get_last_aminoacid();
 
-        let mut actions = Vec::with_capacity(4);
-
-        for dir in vec![Dir::Left, Dir::Down, Dir::Up, Dir::Right] {
-            if state.suitable(&last_aminoacid.clone_move(dir)) {
-                actions.push(dir);
+        let mut actions;
+        if state.index.len() != 2 {
+            actions = Vec::with_capacity(3);
+            for dir in vec![Dir::Left, Dir::Down, Dir::Up, Dir::Right] {
+                if state.suitable(&last_aminoacid.clone_move(dir)) {
+                    actions.push(dir);
+                }
+            }
+        } else {
+            // alla prima svolta considerare solo la destra
+            actions = Vec::with_capacity(2);
+            for dir in vec![Dir::Down, Dir::Up, Dir::Right] {
+                if state.suitable(&last_aminoacid.clone_move(dir)) {
+                    actions.push(dir);
+                }
             }
         }
-
         actions.into_iter()
     }
 
