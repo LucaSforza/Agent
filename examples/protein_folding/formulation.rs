@@ -1,3 +1,4 @@
+use std::collections::{HashMap, HashSet};
 use std::ops::{Deref, DerefMut};
 
 use agent::problem::{CostructSolution, InitState, Problem, SuitableState, Utility};
@@ -79,7 +80,7 @@ impl Eq for Board {}
 
 impl std::fmt::Debug for Board {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.index.len())
+        writeln!(f, "TODO: fare la stampa")
     }
 }
 
@@ -143,19 +144,18 @@ impl Board {
         problem.aminoacids[self.index.len()].clone()
     }
 
-    fn cost_f(&self, last_pos: &Pos, new_pos: &Pos) -> u32 {
+    fn cost_f(&self, problem: &ProteinFolding, last_pos: &Pos, new_pos: &Pos) -> u32 {
         // assume the aminoacid is H
         let max_attacts = 3;
         let mut attacts = 0;
-        for i in self.index.iter() {
+        for (j, i) in self.index.iter().enumerate() {
             let pos = self.protein[*i];
             if pos == *last_pos {
                 continue;
             }
-            for d in [Dir::Up, Dir::Down, Dir::Left, Dir::Right] {
-                if *new_pos == pos.clone_move(d) {
+            if problem.aminoacids[j] == AminoAcid::H {
+                if pos.x.abs_diff(new_pos.x) + pos.y.abs_diff(new_pos.y) == 1 {
                     attacts += 1;
-                    break;
                 }
             }
         }
@@ -189,7 +189,7 @@ impl Board {
             let new_pos = last_pos.clone_move(dir);
             let cost;
             if self.get_new_aminoacid(problem) == AminoAcid::H {
-                cost = self.cost_f(last_pos, &new_pos);
+                cost = self.cost_f(problem, last_pos, &new_pos);
             } else {
                 cost = 0;
             }

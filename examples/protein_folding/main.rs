@@ -18,7 +18,10 @@ fn run_example<B: FrontierBackend<ProteinFolding> + std::fmt::Debug>(protein: &V
     let problem = ProteinFolding::new(protein.clone());
 
     let init_state = problem.init_state();
-    let mut resolver = Explorer::<ProteinFolding, B>::new(problem);
+    let mut resolver = Explorer::<ProteinFolding, B>::with_verbosity(
+        problem,
+        agent::statexplorer::resolver::Verbosity::None,
+    );
 
     let r = resolver.search(init_state);
     println!("{}", r);
@@ -135,7 +138,10 @@ fn run_all(protein: &Vec<AminoAcid>) {
     let problem = ProteinFolding::new(protein.clone());
 
     let init_state = problem.init_state();
-    let mut resolver = Explorer::<ProteinFolding, DFS>::new(problem);
+    let mut resolver = Explorer::<ProteinFolding, DFS>::with_verbosity(
+        problem,
+        agent::statexplorer::resolver::Verbosity::None,
+    );
 
     let r = resolver.iterative_search(init_state, 300);
     println!("{}", r);
