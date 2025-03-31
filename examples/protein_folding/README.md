@@ -8,11 +8,8 @@ se quell'aminoacido ci contribuirà tanto o poco per la massimizzazione dei cont
 
 Quindi l'idea per la formulazione del problema è: Piazza il primo aminoacido sulla posizione (0,0) e questo sarà lo stato iniziale. Alle prossime iterazioni piazza il prossimo aminoacido verso una direzione (sopra, sotto, sinistra, destra) che sia legale (ovvero evitando che due aminoacidi finiscano sulla stessa posizione).
 
-Il costo delle azioni è sempre 1, tranne per l'azione che conclude la proteina. In quel caso oltre al valore costante di ogni azione viene aggiunto anche un valore di "fitness" della soluzione.
-Questo valore viene calcolato nel seguente modo: (massimo numero di contatti possibili) - (numero effettivo di contatti). Il numero massimo di contatti possibili sarebbe il numero di aminoacidi H*3 (il miglior caso sarebbe quando tutte le H combacino in tutte le 3 direzioni possibili).
-
-In questo modo finché non raggiungo profondita N dell'albero di esplorazione io posso enumerare tutte le conformazioni legali che può avere una proteina con la sequenza di aminoacidi in input.
-Solo però arrivato a profondità N che aggiungo al costo la fitness e in questo modo MinCost mi prenderà la soluzione che minimizza il costo, ovvero che minimezza la fitness, ovvero che mi massimizza i contatti.
+Il costo delle azioni è 3 - [numero di nuovi contatti generati]. 
+In questo modo MinCost quando minimizzerà le azioni, massimizzerà il numero di contatti generati.
 
 Le azioni quindi sono la DIREZIONE in cui deve essere piazzato il prossimo aminoacido.
 Dalle direzioni si può ricostruire tutta la forma della proteina e calcolarne l'energia.
@@ -31,6 +28,7 @@ Questra struttura rappresenta il mio problema. Mi salvo in cache anche il numero
 pub struct Board {
     protein: Graph<Pos, Direction, Undirected, u32>,
     index: Vec<NodeIndex>,
+    has_turned: bool,
 }
 ```
 
@@ -40,38 +38,47 @@ Mi tengo anche un vettore `index` dove nell'i-esima posizione contiene l'indice 
 
 Nello stato non mi serve tenermi anche quale aminoacido si trova in una certa posizione. Se voglio quale aminoacido in quale posizione si trova allora mi basta conoscere la sua posizione dal vettore `aminoacids` dentro la struttura `ProteinFolder` e usare il vettore `index` per recuperare l'indice all'interno della lista di adiacenza.
 
+L'attributo `has_turned` ci serve per evitare simmetrie (vedere azioni possibili).
+
 ## Azioni possibili
 
 ```rust
     fn executable_actions(&self, state: &Self::State) -> impl Iterator<Item = Self::Action> {
         if state.index.len() == 1 {
             // non importa dove vado la prima volta
-            return vec![Direction::Up].into_iter();
+            return vec![Dir::Up].into_iter();
         }
 
         let last_aminoacid;
 
         last_aminoacid = state.get_last_aminoacid();
 
-        let mut actions = Vec::with_capacity(4);
-
-        for dir in vec![
-            Direction::Left,
-            Direction::Down,
-            Direction::Up,
-            Direction::Right,
-        ] {
-            if state.suitable(&last_aminoacid.clone_move(dir)) {
-                actions.push(dir);
+        let mut actions;
+        if state.has_turned {
+            actions = Vec::with_capacity(3);
+            for dir in vec![Dir::Left, Dir::Down, Dir::Up, Dir::Right] {
+                if state.suitable(&last_aminoacid.clone_move(dir)) {
+                    actions.push(dir);
+                }
+            }
+        } else {
+            // alla prima svolta considerare solo la destra
+            actions = Vec::with_capacity(2);
+            for dir in vec![Dir::Down, Dir::Up, Dir::Right] {
+                if state.suitable(&last_aminoacid.clone_move(dir)) {
+                    actions.push(dir);
+                }
             }
         }
-
         actions.into_iter()
     }
 ```
 
-Le azioni eseguibili sono semplicemente tutte le direzioni che informano dove deve essere piazzato
-il prossimo aminoacido tale che non infrangano i requisiti (descritti nel metodo `suitable`).
+Le azioni eseguibili sono semplicemente tutte le direzioni che informano dove deve essere piazzato.
+
+Però per evitare simmetrie adottiamo due strategie:
+- il prossimo aminoacido tale che non infrangano i requisiti (descritti nel metodo `suitable`).
+- finché non abbiamo svoltato per la prima volta a destra o a sinistra, consideriamo solo una direzione possibile per svoltare.
 
 ## Goal
 
@@ -152,14 +159,12 @@ Il risultato ottimo è -6. (se l'implementazione è corretta... comunque ho prov
 
 ```
 MinCost:
-actions: Some([Up, Right, Down, Right, Down, Left, Left, Left, Left, Left, Up, Right, Right, Up, Up])
-time: 7.162650678s
-iterations: 942712
-max frontier size: 1604149
+actions: [Up, Right, Down, Right, Down, Left, Left, Left, Left, Left, Up, Right, Right, Up, Left]
+time: 138.334369ms
+iterations: 28209
+max frontier size: 47449
 
-    P      
-    |      
-    H H-P  
+  P-H H-P  
     | | |  
 P-P-H H H-P
 |         |
@@ -174,16 +179,17 @@ Min Cost trova sempre l'ottimo
 
 ```
 BFS:
-actions: Some([Up, Left, Left, Left, Left, Left, Left, Left, Left, Left, Left, Left, Left, Left, Left])
-time: 5.889066771s
-iterations: 942712
-max frontier size: 1604149
+state: TODO: fare la stampa
 
-P-H-H-P-P-P-P-H-H-H-P-P-H-P-H
-                            |
-                            H
-
-Energy: 0
+actions: [Up, Up, Up, Up, Up, Up, Up, Up, Up, Up, Up, Up, Up, Up, Up]
+time: 2.600552147s
+iterations: 471364
+max frontier size: 802075
+P
+|
+H
+|
+...
 ```
 
 BFS non trova l'ottimo, questo perché all'ultima iterazione mette tutti gli stati finali in frontiera, ma per via della regola della BFS prende il primo che ha inserito (First In Firts Out).
@@ -193,14 +199,13 @@ Quindi dato che la prima mossa che l'algoritmo considera è andare a sinistra (v
 
 ```
 DFS:
-actions: Some([Up, Right, Right, Right, Right, Right, Right, Right, Right, Right, Right, Right, Right, Right, Right])
-time: 116.444µs
+actions: [Up, Right, Right, Right, Right, Right, Right, Right, Right, Right, Right, Right, Right, Right, Right]
+time: 83.21µs
 iterations: 16
-max frontier size: 29
-
+max frontier size: 28
 H-P-H-P-P-H-H-H-P-P-P-P-H-H-P
 |                            
-H                            
+H
 
 Energy: 0
 ```
@@ -211,14 +216,12 @@ Ovviamente DFS non trova l'ottimo generalmente, ma dato che segue la regola Last
 
 ```
 AStar:
-actions: Some([Up, Right, Down, Right, Down, Left, Left, Left, Left, Left, Up, Right, Right, Up, Up])
-time: 6.884629498s
-iterations: 942712
-max frontier size: 1604149
+actions: [Up, Right, Down, Right, Down, Left, Left, Left, Left, Left, Up, Right, Right, Up, Left]
+time: 87.863347ms
+iterations: 24124
+max frontier size: 40144
 
-    P      
-    |      
-    H H-P  
+  P-H H-P  
     | | |  
 P-P-H H H-P
 |         |
@@ -233,22 +236,22 @@ A* trova sempre l'ottimo quando l'euristica è consistente.
 
 ```
 BestFirst:
-actions: Some([Up, Up, Right, Down, Right, Down, Left, Down, Down, Left, Left, Up, Up, Up, Up])
-time: 23.357343ms
-iterations: 6840
-max frontier size: 11056
+actions: [Up, Right, Up, Right, Down, Down, Left, Down, Left, Left, Down, Right, Right, Right, Right]
+time: 12.565534ms
+iterations: 3531
+max frontier size: 5691
 
-P P-H  
-| | |  
-H H P-P
-| |   |
-H H H-H
-|   |  
-P   H  
-|   |  
-P-P-P  
+    H-P  
+    | |  
+  H-P P  
+  |   |  
+  H H-H  
+    |    
+P-P-H    
+|        
+P-P-H-H-P
 
-Energy: -3
+Energy: -2
 ```
 
 Generalmente non trova l'ottimo. Però è curioso notare come l'euristica cerchi di raggruppare le H il piu possibile. Dato
@@ -258,11 +261,10 @@ che la mia euristica si basa sulle distanze euclidiane delle H.
 
 ```
 Iterative:
-actions: Some([Up, Right, Right, Right, Right, Right, Right, Right, Right, Right, Right, Right, Right, Right, Right])
-time: 2.716000327s
-iterations: 1495507
-max frontier size: 29
-
+actions: [Up, Right, Right, Right, Right, Right, Right, Right, Right, Right, Right, Right, Right, Right, Right]
+time: 1.424581952s
+iterations: 747821
+max frontier size: 28
 H-P-H-P-P-H-H-H-P-P-P-P-H-H-P
 |                            
 H                            
