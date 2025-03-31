@@ -50,6 +50,7 @@ use petgraph::{Graph, Undirected};
 pub struct Board {
     protein: Graph<Pos, Dir, Undirected, u32>,
     index: Vec<NodeIndex>,
+    has_turned: bool,
 }
 
 impl std::hash::Hash for Board {
@@ -86,6 +87,7 @@ impl std::fmt::Debug for Board {
 impl Board {
     fn new() -> Self {
         Self {
+            has_turned: false,
             protein: Default::default(),
             index: Vec::new(),
         }
@@ -253,7 +255,7 @@ impl CostructSolution for ProteinFolding {
         last_aminoacid = state.get_last_aminoacid();
 
         let mut actions;
-        if state.index.len() != 2 {
+        if state.has_turned {
             actions = Vec::with_capacity(3);
             for dir in vec![Dir::Left, Dir::Down, Dir::Up, Dir::Right] {
                 if state.suitable(&last_aminoacid.clone_move(dir)) {
@@ -274,6 +276,9 @@ impl CostructSolution for ProteinFolding {
 
     fn result(&self, board: &Self::State, dir: &Self::Action) -> (Self::State, Self::Cost) {
         let mut new_board = board.clone();
+        if *dir == Dir::Left || *dir == Dir::Right {
+            new_board.has_turned = true;
+        }
         let cost = new_board.add_pos(self, *dir);
 
         (new_board, cost)
