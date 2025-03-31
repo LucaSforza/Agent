@@ -1,4 +1,3 @@
-use std::collections::{HashMap, HashSet};
 use std::ops::{Deref, DerefMut};
 
 use agent::problem::{CostructSolution, InitState, Problem, SuitableState, Utility};
@@ -113,6 +112,7 @@ impl Board {
         &self.protein[*index]
     }
 
+    #[allow(dead_code)]
     fn contacts(&self, problem: &ProteinFolding) -> u32 {
         let mut total_contacts = 0;
 
