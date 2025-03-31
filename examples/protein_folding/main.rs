@@ -3,17 +3,21 @@ mod formulation;
 use std::collections::{HashMap, HashSet};
 
 use agent::{
-    statexplorer::frontier::{
-        AStarBackend, BestFirstBackend, DequeBackend, FrontierBackend, MinCostBackend, StackBackend,
+    problem::InitState,
+    statexplorer::{
+        frontier::{
+            AStarBackend, BestFirstBackend, DequeBackend, FrontierBackend, MinCostBackend,
+            StackBackend,
+        },
+        resolver::Explorer,
     },
-    statexplorer::resolver::Explorer,
 };
-use formulation::{AminoAcid, Board, Direction, ProteinFolding};
+use formulation::{AminoAcid, Dir, ProteinFolding};
 
 fn run_example<B: FrontierBackend<ProteinFolding> + std::fmt::Debug>(protein: &Vec<AminoAcid>) {
     let problem = ProteinFolding::new(protein.clone());
 
-    let init_state = Board::init_state(&problem);
+    let init_state = problem.init_state();
     let mut resolver = Explorer::<ProteinFolding, B>::new(problem);
 
     let r = resolver.search(init_state);
@@ -27,16 +31,16 @@ type BFS = DequeBackend<ProteinFolding>;
 type AStar = AStarBackend<ProteinFolding>;
 type BestFirst = BestFirstBackend<ProteinFolding>;
 
-fn print_solution(protein: &Vec<AminoAcid>, solution: Vec<Direction>) {
+fn print_solution(protein: &Vec<AminoAcid>, solution: Vec<Dir>) {
     // Genera le posizioni originali degli aminoacidi
     let mut positions = vec![(0, 0)];
     let mut current_pos = (0, 0);
     for dir in solution {
         current_pos = match dir {
-            Direction::Up => (current_pos.0, current_pos.1 + 1),
-            Direction::Down => (current_pos.0, current_pos.1 - 1),
-            Direction::Left => (current_pos.0 - 1, current_pos.1),
-            Direction::Right => (current_pos.0 + 1, current_pos.1),
+            Dir::Up => (current_pos.0, current_pos.1 + 1),
+            Dir::Down => (current_pos.0, current_pos.1 - 1),
+            Dir::Left => (current_pos.0 - 1, current_pos.1),
+            Dir::Right => (current_pos.0 + 1, current_pos.1),
         };
         positions.push(current_pos);
     }
@@ -130,7 +134,7 @@ fn run_all(protein: &Vec<AminoAcid>) {
     println!("Iterative:");
     let problem = ProteinFolding::new(protein.clone());
 
-    let init_state = Board::init_state(&problem);
+    let init_state = problem.init_state();
     let mut resolver = Explorer::<ProteinFolding, DFS>::new(problem);
 
     let r = resolver.iterative_search(init_state, 300);
