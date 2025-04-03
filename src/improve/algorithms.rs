@@ -1,4 +1,4 @@
-use std::{cmp::Reverse, collections::BinaryHeap, ops::Sub};
+use std::{cmp::Reverse, collections::BinaryHeap, fmt, ops::Sub};
 
 use ordered_float::OrderedFloat;
 use rand::Rng;
@@ -17,20 +17,44 @@ where
     fn attempt(&mut self, problem: &P) -> AttemptResult<P>;
 }
 
+#[derive(PartialEq, Eq)]
+pub enum Verbosity {
+    Low,
+    Max,
+}
+
+pub trait VerbosityLevel<P>: ImprovingAlgorithm<P>
+where
+    P: CostructSolution,
+{
+    fn set_verbosity(v: Verbosity);
+}
+
 pub struct SteepestDescend<R: Rng> {
+    verb: Verbosity,
     rng: R,
 }
 
 impl<R: Rng> SteepestDescend<R> {
     pub fn new(rng: R) -> Self {
-        Self { rng: rng }
+        Self {
+            rng: rng,
+            verb: Verbosity::Low,
+        }
+    }
+
+    pub fn with_verbosity(rng: R, verb: Verbosity) -> Self {
+        Self {
+            verb: verb,
+            rng: rng,
+        }
     }
 }
 
 impl<R, P> ImprovingAlgorithm<P> for SteepestDescend<R>
 where
     R: Rng,
-    P: StatePerturbation + Utility + RandomState<State: Clone>,
+    P: StatePerturbation + Utility + RandomState<State: Clone + fmt::Debug, Cost: fmt::Debug>,
 {
     fn attempt(&mut self, problem: &P) -> AttemptResult<P> {
         let mut iterations = 0;
@@ -38,6 +62,12 @@ where
         let mut curr_h = problem.heuristic(&curr_state);
         loop {
             iterations += 1;
+            if self.verb == Verbosity::Max {
+                eprintln!(
+                    "\nIteration: {}\ncurrent state:\n{:?}\nh:{:?}",
+                    iterations, curr_state, curr_h
+                );
+            }
             let mut new_curr_state = curr_state.clone();
             let mut new_curr_h = curr_h;
             for a in problem.perturbations(&curr_state) {
