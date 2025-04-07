@@ -15,10 +15,7 @@ fn run_example<B: FrontierBackend<ProteinFolding> + std::fmt::Debug>(protein: &V
     let problem = ProteinFolding::new(protein.clone());
 
     let init_state = problem.init_state();
-    let mut resolver = Explorer::<ProteinFolding, B>::with_verbosity(
-        problem,
-        agent::statexplorer::resolver::Verbosity::None,
-    );
+    let mut resolver = Explorer::<ProteinFolding, B>::tree_state_esploration(problem);
 
     let r = resolver.search(init_state);
     println!("{}", r);
