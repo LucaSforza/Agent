@@ -50,12 +50,18 @@ pub struct Board {
 
 impl std::hash::Hash for Board {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        /*if let Some(last) = self.last.clone() {
+            last.hash(state);
+        }*/
         if let Some(last) = self.last.clone() {
             last.hash(state);
         }
         self.pos.hash(state);
-        self.depth.hash(state);
-        self.has_turned.hash(state);
+        // self.depth.hash(state);
+        // self.has_turned.hash(state);
+        // self.total_contacs.hash(state);
+        // self.local_contacs.hash(state);
+        // self.contacs.hash(state);
     }
 }
 
