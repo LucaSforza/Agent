@@ -5,10 +5,7 @@ use std::collections::{HashMap, HashSet};
 use agent::{
     problem::InitState,
     statexplorer::{
-        frontier::{
-            AStarBackend, BestFirstBackend, DequeBackend, FrontierBackend, MinCostBackend,
-            StackBackend,
-        },
+        frontier::{AStarBackend, BestFirstBackend, FrontierBackend, MinCostBackend},
         resolver::Explorer,
     },
 };
@@ -29,8 +26,6 @@ fn run_example<B: FrontierBackend<ProteinFolding> + std::fmt::Debug>(protein: &V
 }
 
 type MinCost = MinCostBackend<ProteinFolding>;
-type DFS = StackBackend<ProteinFolding>;
-type BFS = DequeBackend<ProteinFolding>;
 type AStar = AStarBackend<ProteinFolding>;
 type BestFirst = BestFirstBackend<ProteinFolding>;
 
@@ -126,34 +121,22 @@ fn print_solution(protein: &Vec<AminoAcid>, solution: Vec<Dir>) {
 fn run_all(protein: &Vec<AminoAcid>) {
     println!("MinCost:");
     run_example::<MinCost>(protein);
-    println!("BFS:");
-    run_example::<BFS>(protein);
-    println!("DFS:");
-    run_example::<DFS>(protein);
-    println!("AStar:");
+    /*println!("AStar:");
     run_example::<AStar>(protein);
     println!("BestFirst:");
-    run_example::<BestFirst>(protein);
-    println!("Iterative:");
-    let problem = ProteinFolding::new(protein.clone());
-
-    let init_state = problem.init_state();
-    let mut resolver = Explorer::<ProteinFolding, DFS>::with_verbosity(
-        problem,
-        agent::statexplorer::resolver::Verbosity::None,
-    );
-
-    let r = resolver.iterative_search(init_state, 300);
-    println!("{}", r);
-    print_solution(protein, r.actions.unwrap());
+    run_example::<BestFirst>(protein);*/
 }
 
 use AminoAcid::*;
 
 fn main() {
-    //let protein = vec![P, H, H, P, H, P, P, H, P];
+    // let protein = vec![P, H, H, P, H, P, P, H, P];
 
-    let protein = vec![H, H, P, H, P, P, H, H, H, P, P, P, P, H, H, P];
+    // let protein = vec![H, H, P, H, P, P, H, H, H, P, P, P, P, H, H, P];
+
+    let protein = vec![
+        H, H, P, H, P, P, H, H, H, P, P, P, P, H, H, P, H, P, H, P, P, H, P, H, P, H,
+    ];
 
     run_all(&protein);
 }
