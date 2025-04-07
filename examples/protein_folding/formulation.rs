@@ -45,6 +45,7 @@ pub struct Board {
     pos: Pos,
     depth: usize,
     has_turned: bool,
+    total_contacs: u32,
 }
 
 impl std::hash::Hash for Board {
@@ -84,7 +85,7 @@ impl Eq for Board {}
 
 impl std::fmt::Debug for Board {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "TODO: fare la stampa")
+        writeln!(f, "contacts: {}", self.total_contacs)
     }
 }
 
@@ -185,11 +186,17 @@ impl CostructSolution for ProteinFolding {
             depth: board.depth + 1,
             has_turned: board.has_turned,
             pos: board.pos.clone_move(*dir),
+            total_contacs: board.total_contacs,
         };
         if *dir == Dir::Left || *dir == Dir::Right {
             new_board.has_turned = true;
         }
         let cost = board.cost_f(self, &new_board.pos);
+        if self.aminoacids[board.depth + 1] == AminoAcid::H {
+            if cost != 3 {
+                new_board.total_contacs += 1;
+            }
+        }
 
         (Rc::new(new_board), cost)
     }
@@ -203,50 +210,6 @@ impl SuitableState for ProteinFolding {
 
 impl Utility for ProteinFolding {
     fn heuristic(&self, state: &Self::State) -> Self::Cost {
-        // Calcolare la distanza euclidiana dagli aminoacidi H non consecutivi e sottrai per gli aminoacidi H presenti
-        /*    let mut cost = 0.0;
-
-        for (i, a) in state.index.iter().zip(self.aminoacids.iter()) {
-            // se l'aminoacido è H allora controllo la distanza minima rispetto ad un altro aminoacido H che non sia adiacente
-            if *a == AminoAcid::H {
-                let amin = &state.protein[*i];
-                let mut min_distrance = f64::INFINITY;
-                for (j, b) in state.index.iter().zip(self.aminoacids.iter()) {
-                    if i != j && *b == AminoAcid::H && state.find_edge_undirected(*i, *j).is_none()
-                    {
-                        // calcola la distanza euclidiana e aggiungila al costo
-                        let other_amin = &state.protein[*j];
-                        let distance = ((amin.x - other_amin.x).pow(2)
-                            + (amin.y - other_amin.y).pow(2))
-                            as f64;
-                        let distance = distance.sqrt();
-                        if distance < min_distrance {
-                            min_distrance = distance;
-                        }
-                    }
-                }
-                // se l'ho trovato lo aggiungo al costo
-                if min_distrance.is_finite() {
-                    cost += min_distrance;
-                }
-            }
-        }
-
-        // le distanze sono duplicate, divido per 2
-        let mut cost = (cost / 2.0).floor() as <ProteinFolding as CostructSolution>::Cost;
-
-        // aggiungo al costo tutte le H non ancora posizionate, cosi quando sottraggo il risultato è consistente
-        cost += (self
-            .aminoacids
-            .iter()
-            .filter(|x| **x == AminoAcid::H)
-            .count()) as u32;
-
-        // sottraggo al costo il numero di H posizionati
-        // questo perché vorrei che la soluzione ottima abbia 0 come euristica.
-        // Se ogni H è stato posizionato con successo allora le loro distanze euclidiane sono 1
-        // vengono sommate al costo e poi sottratte qua.
-        cost - self.h_numer */
-        0
+        self.h_numer - state.total_contacs
     }
 }

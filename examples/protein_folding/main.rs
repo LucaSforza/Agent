@@ -118,10 +118,10 @@ fn print_solution(protein: &Vec<AminoAcid>, solution: Vec<Dir>) {
 fn run_all(protein: &Vec<AminoAcid>) {
     println!("MinCost:");
     run_example::<MinCost>(protein);
-    /*println!("AStar:");
+    println!("AStar:");
     run_example::<AStar>(protein);
     println!("BestFirst:");
-    run_example::<BestFirst>(protein);*/
+    run_example::<BestFirst>(protein);
 }
 
 use AminoAcid::*;
