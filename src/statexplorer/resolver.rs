@@ -259,7 +259,7 @@ where
                             let new_node = Node::new(
                                 Some(curr_node.clone()),
                                 &self.problem,
-                                new_state.clone(),
+                                new_state,
                                 Some(action),
                                 cost,
                             );
