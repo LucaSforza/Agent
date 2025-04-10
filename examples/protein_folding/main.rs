@@ -1,17 +1,27 @@
 mod formulation;
 
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    time::Duration,
+};
 
 use agent::{
-    problem::InitState,
+    problem::{self, InitState},
     statexplorer::{
-        frontier::{AStarBackend, BestFirstBackend, FrontierBackend, MinCostBackend},
-        resolver::Explorer,
+        frontier::{
+            AStarBackend, BestFirstBackend, DequeBackend, FrontierBackend, MinCostBackend,
+            StackBackend,
+        },
+        resolver::{Explorer, SearchResult},
     },
 };
 use formulation::{AminoAcid, Dir, ProteinFolding};
+use rand::seq::SliceRandom;
+use rand::Rng;
 
-fn run_example<B: FrontierBackend<ProteinFolding> + std::fmt::Debug>(protein: &Vec<AminoAcid>) {
+fn run_example<B: FrontierBackend<ProteinFolding> + std::fmt::Debug>(
+    protein: &Vec<AminoAcid>,
+) -> Duration {
     let problem = ProteinFolding::new(protein.clone());
 
     let init_state = problem.init_state();
@@ -20,13 +30,16 @@ fn run_example<B: FrontierBackend<ProteinFolding> + std::fmt::Debug>(protein: &V
     let r = resolver.search(init_state);
     println!("{}", r);
     print_solution(protein, r.actions.unwrap());
+    r.total_time
 }
 
 type MinCost = MinCostBackend<ProteinFolding>;
 type AStar = AStarBackend<ProteinFolding>;
 type BestFirst = BestFirstBackend<ProteinFolding>;
+type BFS = DequeBackend<ProteinFolding>;
+type DFS = StackBackend<ProteinFolding>;
 
-fn print_solution(protein: &Vec<AminoAcid>, solution: Vec<Dir>) {
+fn print_solution(protein: &Vec<AminoAcid>, solution: Vec<Dir>) -> i32 {
     // Genera le posizioni originali degli aminoacidi
     let mut positions = vec![(0, 0)];
     let mut current_pos = (0, 0);
@@ -113,6 +126,7 @@ fn print_solution(protein: &Vec<AminoAcid>, solution: Vec<Dir>) {
     }
 
     println!("\nEnergy: {}", -(adjacency_pairs.len() as isize));
+    -(adjacency_pairs.len() as i32)
 }
 
 fn run_all(protein: &Vec<AminoAcid>) {
@@ -122,18 +136,69 @@ fn run_all(protein: &Vec<AminoAcid>) {
     run_example::<AStar>(protein);
     println!("BestFirst:");
     run_example::<BestFirst>(protein);
+    println!("DFS:");
+    run_example::<DFS>(protein);
+    println!("BFS:");
+    run_example::<BFS>(protein);
 }
 
 use AminoAcid::*;
 
+fn random_protein(n: usize, h_number: usize) -> Vec<AminoAcid> {
+    assert!(n >= h_number);
+
+    let mut result: Vec<AminoAcid> = vec![H; h_number];
+    result.extend(vec![P; n - h_number]);
+    let mut rng = rand::rng();
+    result.shuffle(&mut rng);
+
+    result
+}
+
+fn random_test(n: usize, iters: usize) {
+    for i in 1..=n {
+        let mut max_ratio: f64 = 0.0;
+        let mut max_time = Duration::default();
+        for j in 0..=i {
+            let mut med = Duration::default();
+            for _ in 0..iters {
+                let r = random_protein(i, j);
+                let d = run_example::<AStar>(&r);
+                med += d / iters as u32;
+            }
+            let ratio = j as f64 / i as f64;
+            // println!(
+            //     "ratio: {}\nprotein lenght: {}\nh number: {}\ntime: {:?}\n",
+            //     ratio, i, j, med
+            // );
+            if med > max_time {
+                max_time = med;
+                max_ratio = ratio;
+            }
+        }
+        println!("protein lenght: {}\n Max ratio: {}", i, max_ratio);
+    }
+}
+
 fn main() {
     // let protein = vec![P, H, H, P, H, P, P, H, P];
 
-    // let protein = vec![H, H, P, H, P, P, H, H, H, P, P, P, P, H, H, P];
+    let protein = vec![H, H, P, H, P, P, H, H, H, P, P, P, P, H, H, P];
 
-    let protein = vec![
-        H, H, P, H, P, P, H, H, H, P, P, P, P, H, H, P, H, P, H, P, P, H, P, H, P, H,
-    ];
+    // let protein = vec![
+    //     H, H, P, H, P, P, H, H, H, P, P, P, P, H, H, P, H, P, H, P, P, H, P, H, P, H,
+    // ];
+
+    // let protein = vec![H, H, H, H, H, H, H, H, H, P, H, H, H, H, H, H, H, H, H];
 
     run_all(&protein);
+
+    // let mut rng = rand::rng();
+    // let r = random_protein(20, rng.random_range(0..=20));
+    // println!("{:?}", r);
+    // let s1 = run_example::<MinCost>(&r);
+    // let s2 = run_example::<AStar>(&r);
+    // assert_eq!(s1, s2);
+
+    // random_test(20, 300);
 }

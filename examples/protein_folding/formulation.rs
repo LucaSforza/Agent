@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use agent::problem::{CostructSolution, Problem, SuitableState, Utility};
 
-#[derive(PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum AminoAcid {
     H,
     P,
@@ -175,7 +175,7 @@ impl CostructSolution for ProteinFolding {
                 }
             }
         } else {
-            // alla prima svolta considerare solo la destra
+            // come prima svolta considerare solo la destra
             actions = Vec::with_capacity(2);
             for dir in vec![Dir::Down, Dir::Up, Dir::Right] {
                 if state.suitable(&state.pos.clone_move(dir)) {

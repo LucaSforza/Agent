@@ -6,6 +6,7 @@ version = 4
 name = "agent"
 version = "0.1.0"
 dependencies = [
+ "bumpalo",
  "libm",
  "ordered-float",
  "rand",
@@ -23,6 +24,12 @@ name = "bitflags"
 version = "2.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5c8214115b7bf84099f1309324e63141d4c5d7cc26862f97a0a857dbefe165bd"
+
+[[package]]
+name = "bumpalo"
+version = "3.17.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1628fb46dfa0b37568d12e5edd512553eccf6a22a78e8bde00bb4aed84d5bdbf"
 
 [[package]]
 name = "cfg-if"
