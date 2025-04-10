@@ -124,6 +124,7 @@ where
     problem: P,
     explored: HashSet<P::State>,
     frontier: Frontier<P, Backend>,
+    tree_exploration: bool,
 }
 
 impl<P, Backend> Explorer<P, Backend>
@@ -131,12 +132,23 @@ where
     P: SuitableState + Utility<State: Eq + Hash + Clone + Debug, Action: Clone, Cost: Debug>,
     Backend: FrontierBackend<P> + Debug,
 {
+    pub fn tree_state_esploration(problem: P) -> Self {
+        Self {
+            problem: problem,
+            verbosity: Verbosity::None,
+            explored: HashSet::new(),
+            frontier: Frontier::new(),
+            tree_exploration: true,
+        }
+    }
+
     pub fn with_verbosity(problem: P, verbosity: Verbosity) -> Self {
         Self {
             problem: problem,
             verbosity: verbosity,
             explored: HashSet::new(),
             frontier: Frontier::new(),
+            tree_exploration: false,
         }
     }
 
@@ -146,6 +158,7 @@ where
             verbosity: Verbosity::Low,
             explored: HashSet::new(),
             frontier: Frontier::new(),
+            tree_exploration: false,
         }
     }
 
@@ -155,6 +168,7 @@ where
             verbosity: Verbosity::None,
             explored: HashSet::new(),
             frontier: Frontier::new(),
+            tree_exploration: false,
         }
     }
 
@@ -241,11 +255,11 @@ where
                 if lim.map_or(true, |x| x > depth) {
                     for action in self.problem.executable_actions(curr_state) {
                         let (new_state, cost) = self.problem.result(curr_state, &action);
-                        if !self.explored.contains(&new_state) {
+                        if self.tree_exploration || !self.explored.contains(&new_state) {
                             let new_node = Node::new(
                                 Some(curr_node.clone()),
                                 &self.problem,
-                                new_state.clone(),
+                                new_state,
                                 Some(action),
                                 cost,
                             );
@@ -254,7 +268,9 @@ where
                     }
                 }
             }
-            self.explored.insert(curr_state.clone());
+            if !self.tree_exploration {
+                self.explored.insert(curr_state.clone());
+            }
             if max_frontier_size < self.frontier.size() {
                 max_frontier_size = self.frontier.size();
             }
