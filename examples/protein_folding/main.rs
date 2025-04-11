@@ -12,7 +12,7 @@ use agent::{
             AStarBackend, BestFirstBackend, DequeBackend, FrontierBackend, MinCostBackend,
             StackBackend,
         },
-        resolver::{Explorer, SearchResult},
+        resolver::{Explorer, SearchResult, TreeExplorer},
     },
 };
 use formulation::{AminoAcid, Dir, ProteinFolding};
@@ -25,7 +25,7 @@ fn run_example<B: FrontierBackend<ProteinFolding> + std::fmt::Debug>(
     let problem = ProteinFolding::new(protein.clone());
 
     let init_state = problem.init_state();
-    let mut resolver = Explorer::<ProteinFolding, B>::tree_state_esploration(problem);
+    let mut resolver = TreeExplorer::<ProteinFolding, B>::new(problem);
 
     let r = resolver.search(init_state);
     println!("{}", r);
@@ -136,10 +136,10 @@ fn run_all(protein: &Vec<AminoAcid>) {
     run_example::<AStar>(protein);
     println!("BestFirst:");
     run_example::<BestFirst>(protein);
-    println!("DFS:");
-    run_example::<DFS>(protein);
-    println!("BFS:");
-    run_example::<BFS>(protein);
+    // println!("DFS:");
+    // run_example::<DFS>(protein);
+    // println!("BFS:");
+    // run_example::<BFS>(protein);
 }
 
 use AminoAcid::*;
@@ -167,10 +167,10 @@ fn random_test(n: usize, iters: usize) {
                 med += d / iters as u32;
             }
             let ratio = j as f64 / i as f64;
-            // println!(
-            //     "ratio: {}\nprotein lenght: {}\nh number: {}\ntime: {:?}\n",
-            //     ratio, i, j, med
-            // );
+            println!(
+                "ratio: {}\nprotein lenght: {}\nh number: {}\ntime: {:?}\n",
+                ratio, i, j, med
+            );
             if med > max_time {
                 max_time = med;
                 max_ratio = ratio;
@@ -183,10 +183,10 @@ fn random_test(n: usize, iters: usize) {
 fn main() {
     // let protein = vec![P, H, H, P, H, P, P, H, P];
 
-    let protein = vec![H, H, P, H, P, P, H, H, H, P, P, P, P, H, H, P];
+    //let protein = vec![H, H, P, H, P, P, H, H, H, P, P, P, P, H, H, P];
 
     // let protein = vec![
-    //     H, H, P, H, P, P, H, H, H, P, P, P, P, H, H, P, H, P, H, P, P, H, P, H, P, H,
+    //     P, H, P, H, P, P, H, H, H, P, P, P, P, H, H, P, H, P, H, P, P, H, P, H, P, H,
     // ];
 
     // let protein = vec![H, H, H, H, H, H, H, H, H, P, H, H, H, H, H, H, H, H, H];
@@ -200,5 +200,5 @@ fn main() {
     // let s2 = run_example::<AStar>(&r);
     // assert_eq!(s1, s2);
 
-    // random_test(20, 300);
+    // random_test(20, 30);
 }
