@@ -12,7 +12,7 @@ use agent::{
             AStarBackend, BestFirstBackend, DequeBackend, FrontierBackend, MinCostBackend,
             StackBackend,
         },
-        resolver::{Explorer, SearchResult},
+        resolver::{Explorer, SearchResult, TreeExplorer},
     },
 };
 use formulation::{AminoAcid, Dir, ProteinFolding};
@@ -25,7 +25,7 @@ fn run_example<B: FrontierBackend<ProteinFolding> + std::fmt::Debug>(
     let problem = ProteinFolding::new(protein.clone());
 
     let init_state = problem.init_state();
-    let mut resolver = Explorer::<ProteinFolding, B>::tree_state_esploration(problem);
+    let mut resolver = TreeExplorer::<ProteinFolding, B>::new(problem);
 
     let r = resolver.search(init_state);
     println!("{}", r);
@@ -156,7 +156,7 @@ fn random_protein(n: usize, h_number: usize) -> Vec<AminoAcid> {
 }
 
 fn random_test(n: usize, iters: usize) {
-    for i in 1..=n {
+    for i in 19..=n {
         let mut max_ratio: f64 = 0.0;
         let mut max_time = Duration::default();
         for j in 0..=i {
@@ -167,10 +167,10 @@ fn random_test(n: usize, iters: usize) {
                 med += d / iters as u32;
             }
             let ratio = j as f64 / i as f64;
-            // println!(
-            //     "ratio: {}\nprotein lenght: {}\nh number: {}\ntime: {:?}\n",
-            //     ratio, i, j, med
-            // );
+            println!(
+                "ratio: {}\nprotein lenght: {}\nh number: {}\ntime: {:?}\n",
+                ratio, i, j, med
+            );
             if med > max_time {
                 max_time = med;
                 max_ratio = ratio;
@@ -200,5 +200,5 @@ fn main() {
     // let s2 = run_example::<AStar>(&r);
     // assert_eq!(s1, s2);
 
-    // random_test(20, 300);
+    // random_test(20, 5);
 }

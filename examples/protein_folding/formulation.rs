@@ -8,7 +8,7 @@ pub enum AminoAcid {
     P,
 }
 
-#[derive(Clone, Copy, Hash, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Dir {
     Up,
     Down,
@@ -16,7 +16,7 @@ pub enum Dir {
     Right,
 }
 
-#[derive(Clone, Copy, Hash, PartialEq, Default)]
+#[derive(Clone, Copy, PartialEq, Default)]
 pub struct Pos {
     x: isize,
     y: isize,
@@ -46,23 +46,6 @@ pub struct Board {
     depth: usize,
     has_turned: bool,
     total_contacs: u32,
-}
-
-impl std::hash::Hash for Board {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        /*if let Some(last) = self.last.clone() {
-            last.hash(state);
-        }*/
-        if let Some(last) = self.last.clone() {
-            last.hash(state);
-        }
-        self.pos.hash(state);
-        // self.depth.hash(state);
-        // self.has_turned.hash(state);
-        // self.total_contacs.hash(state);
-        // self.local_contacs.hash(state);
-        // self.contacs.hash(state);
-    }
 }
 
 impl PartialEq for Board {

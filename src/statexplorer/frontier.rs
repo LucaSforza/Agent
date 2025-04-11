@@ -17,6 +17,7 @@ where
     fn enqueue(&mut self, item: Rc<Node<P>>);
     fn dequeue(&mut self) -> Option<Rc<Node<P>>>;
     fn reset(&mut self);
+    fn size(&self) -> usize;
 }
 
 pub struct Frontier<P, Backend>
@@ -114,6 +115,10 @@ where
     fn reset(&mut self) {
         self.clear();
     }
+
+    fn size(&self) -> usize {
+        self.len()
+    }
 }
 
 pub type StackBackend<P> = Vec<Rc<Node<P>>>;
@@ -132,6 +137,10 @@ where
 
     fn reset(&mut self) {
         self.clear();
+    }
+
+    fn size(&self) -> usize {
+        self.len()
     }
 }
 
@@ -264,6 +273,10 @@ where
 
     fn reset(&mut self) {
         self.collection.clear()
+    }
+
+    fn size(&self) -> usize {
+        self.collection.len()
     }
 }
 
