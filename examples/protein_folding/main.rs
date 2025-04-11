@@ -136,10 +136,10 @@ fn run_all(protein: &Vec<AminoAcid>) {
     run_example::<AStar>(protein);
     println!("BestFirst:");
     run_example::<BestFirst>(protein);
-    println!("DFS:");
-    run_example::<DFS>(protein);
-    println!("BFS:");
-    run_example::<BFS>(protein);
+    // println!("DFS:");
+    // run_example::<DFS>(protein);
+    // println!("BFS:");
+    // run_example::<BFS>(protein);
 }
 
 use AminoAcid::*;
@@ -156,7 +156,7 @@ fn random_protein(n: usize, h_number: usize) -> Vec<AminoAcid> {
 }
 
 fn random_test(n: usize, iters: usize) {
-    for i in 19..=n {
+    for i in 1..=n {
         let mut max_ratio: f64 = 0.0;
         let mut max_time = Duration::default();
         for j in 0..=i {
@@ -183,10 +183,10 @@ fn random_test(n: usize, iters: usize) {
 fn main() {
     // let protein = vec![P, H, H, P, H, P, P, H, P];
 
-    let protein = vec![H, H, P, H, P, P, H, H, H, P, P, P, P, H, H, P];
+    //let protein = vec![H, H, P, H, P, P, H, H, H, P, P, P, P, H, H, P];
 
     // let protein = vec![
-    //     H, H, P, H, P, P, H, H, H, P, P, P, P, H, H, P, H, P, H, P, P, H, P, H, P, H,
+    //     P, H, P, H, P, P, H, H, H, P, P, P, P, H, H, P, H, P, H, P, P, H, P, H, P, H,
     // ];
 
     // let protein = vec![H, H, H, H, H, H, H, H, H, P, H, H, H, H, H, H, H, H, H];
@@ -200,5 +200,5 @@ fn main() {
     // let s2 = run_example::<AStar>(&r);
     // assert_eq!(s1, s2);
 
-    // random_test(20, 5);
+    // random_test(20, 30);
 }

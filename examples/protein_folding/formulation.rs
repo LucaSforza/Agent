@@ -16,7 +16,7 @@ pub enum Dir {
     Right,
 }
 
-#[derive(Clone, Copy, PartialEq, Default)]
+#[derive(Clone, Hash, Copy, PartialEq, Default)]
 pub struct Pos {
     x: isize,
     y: isize,
@@ -95,12 +95,24 @@ impl Board {
         return true;
     }
 
-    fn cost_f(&self, problem: &ProteinFolding, new_pos: &Pos) -> u32 {
+    fn cost_f(&self, problem: &ProteinFolding, new_pos: &Pos) -> (u32, bool) {
+        if self.depth == 0 && problem.aminoacids[0] == AminoAcid::H {
+            let mut max_attacs = 3;
+            if problem.aminoacids[self.depth + 1] == AminoAcid::H {
+                max_attacs += 2;
+            }
+            return (max_attacs, false);
+        }
         if problem.aminoacids[self.depth + 1] != AminoAcid::H {
-            return 0;
+            return (0, false);
         }
         // assume the aminoacid is H
-        let max_attacts = 3;
+        let max_attacts;
+        if problem.aminoacids.len() - 1 == self.depth + 1 {
+            max_attacts = 3;
+        } else {
+            max_attacts = 2;
+        }
         let mut attacts = 0;
 
         let mut last = self.last.clone();
@@ -113,7 +125,7 @@ impl Board {
             }
             last = l.last.clone()
         }
-        max_attacts - attacts
+        (max_attacts - attacts, attacts > 0)
     }
 }
 
@@ -180,13 +192,12 @@ impl CostructSolution for ProteinFolding {
         if *dir == Dir::Left || *dir == Dir::Right {
             new_board.has_turned = true;
         }
-        let cost = board.cost_f(self, &new_board.pos);
+        let (cost, found) = board.cost_f(self, &new_board.pos);
         if self.aminoacids[board.depth + 1] == AminoAcid::H {
-            if cost != 3 {
-                new_board.total_contacs += 1;
+            if found {
+                new_board.total_contacs += 1; // TODO: verificare che non sia l'ultimo
             }
         }
-
         (Rc::new(new_board), cost)
     }
 }
