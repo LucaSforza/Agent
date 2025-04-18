@@ -2,6 +2,7 @@ use std::cell::RefCell;
 use std::clone::Clone;
 use std::fmt::Debug;
 use std::hash::Hash;
+use std::ops::Add;
 use std::rc::Rc;
 use std::vec::Vec;
 
@@ -13,7 +14,7 @@ where
     P: Utility,
 {
     state: P::State,
-    parent: Option<Rc<Node<P>>>,
+    parent: Option<Rc<Self>>,
     action: Option<P::Action>,
     total_cost: P::Cost,
     heuristic: P::Cost,
@@ -23,7 +24,7 @@ where
 
 impl<P> Node<P>
 where
-    P: Utility<Action: Clone>,
+    P: Utility<Action: Clone, Cost: Add<Output = P::Cost>>,
 {
     pub fn new(
         parent: Option<Rc<Node<P>>>,
@@ -101,7 +102,7 @@ where
 
 impl<P> Debug for Node<P>
 where
-    P: Utility<State: Debug, Action: Clone, Cost: Debug>,
+    P: Utility<State: Debug, Action: Clone, Cost: Debug + Add<Output = P::Cost>>,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
@@ -112,13 +113,6 @@ where
             self.heuristic,
             self.get_f_cost()
         )
-
-        /* f.debug_struct("Node")
-        .field("state", &self.state)
-        .field("total_cost", &self.total_cost)
-        .field("heuristic", &self.heuristic)
-        .field("depth", &self.depth)
-        .finish() */
     }
 }
 

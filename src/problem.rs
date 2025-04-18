@@ -1,5 +1,6 @@
+use std::ops::Add;
+
 use rand::{seq::IteratorRandom, Rng};
-use rand_distr::num_traits::Num;
 
 pub trait Problem {
     type State;
@@ -20,7 +21,7 @@ where
 
 pub trait CostructSolution: Problem {
     type Action;
-    type Cost: Default + Copy + Ord + Num;
+    type Cost: Default + Copy + Ord + Add<Output = Self::Cost>;
 
     fn executable_actions(&self, state: &Self::State) -> impl Iterator<Item = Self::Action>;
     fn result(&self, state: &Self::State, action: &Self::Action) -> (Self::State, Self::Cost);

@@ -41,7 +41,7 @@ impl Pos {
 
 #[derive(Clone, Default)]
 pub struct Board {
-    last: Option<Rc<Board>>,
+    last: Option<Rc<Self>>,
     pos: Pos,
     depth: usize,
     has_turned: bool,
@@ -94,32 +94,38 @@ impl Board {
         }
         return true;
     }
+}
 
-    fn cost_f(&self, problem: &ProteinFolding, new_pos: &Pos) -> u32 {
-        if problem.aminoacids[self.depth + 1] != AminoAcid::H {
-            return 0;
-        }
-        // assume the aminoacid is H
-        let max_attacts = 3;
-        let mut attacts = 0;
+fn default_heuristic(problem: &ProteinFolding, state: &Board) -> u32 {
+    problem.h_number - state.total_contacs
+}
 
-        let mut last = self.last.clone();
-
-        while let Some(l) = last {
-            if problem.aminoacids[l.depth] == AminoAcid::H {
-                if l.pos.x.abs_diff(new_pos.x) + l.pos.y.abs_diff(new_pos.y) == 1 {
-                    attacts += 1;
-                }
-            }
-            last = l.last.clone()
-        }
-        max_attacts - attacts
+fn default_cost_f(problem: &ProteinFolding, state: &Board, new_pos: &Pos) -> u32 {
+    if problem.aminoacids[state.depth + 1] != AminoAcid::H {
+        return 0;
     }
+    // assume the aminoacid is H
+    let max_attacts = 3;
+    let mut attacts = 0;
+
+    let mut last = state.last.clone();
+
+    while let Some(l) = last {
+        if problem.aminoacids[l.depth] == AminoAcid::H {
+            if l.pos.x.abs_diff(new_pos.x) + l.pos.y.abs_diff(new_pos.y) == 1 {
+                attacts += 1;
+            }
+        }
+        last = l.last.clone()
+    }
+    max_attacts - attacts
 }
 
 pub struct ProteinFolding {
     aminoacids: Vec<AminoAcid>, // len is n
-    h_numer: u32,
+    h_number: u32,
+    heuristic: fn(&ProteinFolding, &Board) -> u32,
+    cost_f: fn(&ProteinFolding, &Board, &Pos) -> u32,
 }
 
 impl ProteinFolding {
@@ -130,7 +136,9 @@ impl ProteinFolding {
             .sum();
         Self {
             aminoacids: aminoacid,
-            h_numer: h_number,
+            h_number: h_number,
+            heuristic: default_heuristic,
+            cost_f: default_cost_f,
         }
     }
 }
@@ -180,7 +188,8 @@ impl CostructSolution for ProteinFolding {
         if *dir == Dir::Left || *dir == Dir::Right {
             new_board.has_turned = true;
         }
-        let cost = board.cost_f(self, &new_board.pos);
+
+        let cost = (self.cost_f)(self, board, &new_board.pos);
         if self.aminoacids[board.depth + 1] == AminoAcid::H {
             if cost != 3 {
                 new_board.total_contacs += 1;
@@ -199,6 +208,6 @@ impl SuitableState for ProteinFolding {
 
 impl Utility for ProteinFolding {
     fn heuristic(&self, state: &Self::State) -> Self::Cost {
-        self.h_numer - state.total_contacs
+        (self.heuristic)(self, state)
     }
 }
