@@ -6,18 +6,17 @@ use std::{
 };
 
 use agent::{
-    problem::{self, InitState},
+    problem::InitState,
     statexplorer::{
         frontier::{
             AStarBackend, BestFirstBackend, DequeBackend, FrontierBackend, MinCostBackend,
             StackBackend,
         },
-        resolver::{Explorer, SearchResult, TreeExplorer},
+        resolver::TreeExplorer,
     },
 };
 use formulation::{AminoAcid, Dir, ProteinFolding};
 use rand::seq::SliceRandom;
-use rand::Rng;
 
 fn run_example<B: FrontierBackend<ProteinFolding> + std::fmt::Debug>(
     protein: &Vec<AminoAcid>,
@@ -134,12 +133,12 @@ fn run_all(protein: &Vec<AminoAcid>) {
     run_example::<MinCost>(protein);
     println!("AStar:");
     run_example::<AStar>(protein);
-    println!("BestFirst:");
-    run_example::<BestFirst>(protein);
-    println!("DFS:");
-    run_example::<DFS>(protein);
-    println!("BFS:");
-    run_example::<BFS>(protein);
+    // println!("BestFirst:");
+    // run_example::<BestFirst>(protein);
+    // println!("DFS:");
+    // run_example::<DFS>(protein);
+    // println!("BFS:");
+    // run_example::<BFS>(protein);
 }
 
 use AminoAcid::*;
@@ -181,12 +180,16 @@ fn random_test(n: usize, iters: usize) {
 }
 
 fn main() {
-    // let protein = vec![P, H, H, P, H, P, P, H, P];
+    //let protein = vec![P, H, H, P, H, P, P, H, P];
 
-    let protein = vec![H, H, P, H, P, P, H, H, H, P, P, P, P, H, H, P];
+    // let protein = vec![H, H, P, H, P, P, H, H, H, P, P, P, P, H, H, P];
+
+    let protein = vec![
+        H, H, P, H, P, P, H, H, H, P, P, P, P, H, H, P, H, P, H, P, P, H, P, H, P, H,
+    ];
 
     // let protein = vec![
-    //     H, H, P, H, P, P, H, H, H, P, P, P, P, H, H, P, H, P, H, P, P, H, P, H, P, H,
+    //     H, H, P, H, P, P, H, H, H, P, P, P, P, H, H, P, H, P, H, P, P, H, P, H, P, H, H,
     // ];
 
     // let protein = vec![H, H, H, H, H, H, H, H, H, P, H, H, H, H, H, H, H, H, H];

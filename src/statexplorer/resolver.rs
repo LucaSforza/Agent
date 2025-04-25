@@ -285,7 +285,7 @@ where
 
 impl<P, Backend> TreeExplorer<P, Backend>
 where
-    P: SuitableState + Utility<State: Clone, Action: Clone>,
+    P: SuitableState + Utility<State: Copy, Action: Clone>,
     Backend: FrontierBackend<P>,
 {
     pub fn new(problem: P) -> Self {
@@ -365,7 +365,7 @@ where
 
             if self.problem.is_suitable(&curr_state) {
                 result = InnerResult::<P::State, P::Action>::found(
-                    curr_node.get_state().clone(),
+                    *curr_node.get_state(),
                     curr_node.get_plan().into(),
                     max_frontier_size,
                 );

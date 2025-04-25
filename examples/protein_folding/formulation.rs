@@ -48,6 +48,37 @@ pub struct Board {
     total_contacs: u32,
 }
 
+pub struct BoardIterator {
+    head: Option<Rc<Board>>,
+}
+
+impl BoardIterator {
+    fn from_parts(head: Option<Rc<Board>>) -> Self {
+        Self { head: head }
+    }
+
+    fn new(board: Rc<Board>) -> Self {
+        Self { head: board.into() }
+    }
+
+    fn void_iter() -> Self {
+        Self { head: None }
+    }
+}
+
+impl Iterator for BoardIterator {
+    type Item = Rc<Board>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(board) = self.head.clone() {
+            self.head = board.last.clone();
+            Some(board)
+        } else {
+            None
+        }
+    }
+}
+
 impl PartialEq for Board {
     fn eq(&self, other: &Self) -> bool {
         if self.depth != other.depth {
@@ -94,13 +125,19 @@ impl Board {
         }
         return true;
     }
+
+    fn iter(self: Rc<Self>) -> BoardIterator {
+        BoardIterator {
+            head: self.clone().into(),
+        }
+    }
 }
 
-fn default_heuristic(problem: &ProteinFolding, state: &Board) -> u32 {
+fn default_heuristic(problem: &ProteinFolding, state: &Rc<Board>) -> u32 {
     problem.h_number - state.total_contacs
 }
 
-fn default_cost_f(problem: &ProteinFolding, state: &Board, new_pos: &Pos) -> u32 {
+fn default_cost_f(problem: &ProteinFolding, state: &Rc<Board>, new_pos: &Pos) -> u32 {
     if problem.aminoacids[state.depth + 1] != AminoAcid::H {
         return 0;
     }
@@ -124,8 +161,8 @@ fn default_cost_f(problem: &ProteinFolding, state: &Board, new_pos: &Pos) -> u32
 pub struct ProteinFolding {
     aminoacids: Vec<AminoAcid>, // len is n
     h_number: u32,
-    heuristic: fn(&ProteinFolding, &Board) -> u32,
-    cost_f: fn(&ProteinFolding, &Board, &Pos) -> u32,
+    heuristic: fn(&ProteinFolding, &Rc<Board>) -> u32,
+    cost_f: fn(&ProteinFolding, &Rc<Board>, &Pos) -> u32,
 }
 
 impl ProteinFolding {
