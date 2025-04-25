@@ -6,7 +6,7 @@ use std::{
 };
 
 use agent::{
-    problem::InitState,
+    problem::{self, InitState},
     statexplorer::{
         frontier::{
             AStarBackend, BestFirstBackend, DequeBackend, FrontierBackend, MinCostBackend,
@@ -19,26 +19,24 @@ use bumpalo::Bump;
 use formulation::{AminoAcid, Dir, ProteinFolding};
 use rand::seq::SliceRandom;
 
-fn run_example<'a, B: FrontierBackend<ProteinFolding<'a>> + std::fmt::Debug>(
-    protein: &Vec<AminoAcid>,
+fn run_example<'a, B: FrontierBackend<'a, ProteinFolding<'a>> + std::fmt::Debug>(
     arena: &'a Bump,
+    problem: &'a ProteinFolding<'a>,
 ) -> Duration {
-    let problem = ProteinFolding::new(protein.clone(), arena);
-
     let init_state = problem.init_state();
-    let mut resolver = TreeExplorer::<ProteinFolding, B>::new(problem);
+    let mut resolver = TreeExplorer::<'a, ProteinFolding, B>::new(problem, arena);
 
     let r = resolver.search(init_state);
     println!("{}", r);
-    print_solution(protein, r.actions.unwrap());
+    print_solution(&problem.aminoacids, r.actions.unwrap());
     r.total_time
 }
 
-type MinCost<'a> = MinCostBackend<ProteinFolding<'a>>;
-type AStar<'a> = AStarBackend<ProteinFolding<'a>>;
-type BestFirst<'a> = BestFirstBackend<ProteinFolding<'a>>;
-type BFS<'a> = DequeBackend<ProteinFolding<'a>>;
-type DFS<'a> = StackBackend<ProteinFolding<'a>>;
+type MinCost<'a> = MinCostBackend<'a, ProteinFolding<'a>>;
+type AStar<'a> = AStarBackend<'a, ProteinFolding<'a>>;
+type BestFirst<'a> = BestFirstBackend<'a, ProteinFolding<'a>>;
+type BFS<'a> = DequeBackend<'a, ProteinFolding<'a>>;
+type DFS<'a> = StackBackend<'a, ProteinFolding<'a>>;
 
 fn print_solution(protein: &Vec<AminoAcid>, solution: Vec<Dir>) -> i32 {
     // Genera le posizioni originali degli aminoacidi
@@ -130,14 +128,15 @@ fn print_solution(protein: &Vec<AminoAcid>, solution: Vec<Dir>) -> i32 {
     -(adjacency_pairs.len() as i32)
 }
 
-fn run_all(protein: &Vec<AminoAcid>) {
+fn run_all(protein: Vec<AminoAcid>) {
+    let arena = Bump::new();
+    let problem = ProteinFolding::new(protein, &arena);
     println!("MinCost:");
-    let arena = Bump::new();
-    run_example::<MinCost>(protein, &arena);
-    drop(arena);
-    let arena = Bump::new();
+    // let arena = Bump::new();
+    // run_example::<MinCost>(protein, &arena);
+    // drop(arena);
     println!("AStar:");
-    run_example::<AStar>(protein, &arena);
+    run_example::<AStar>(&arena, &problem);
     // println!("BestFirst:");
     // run_example::<BestFirst>(protein);
     // println!("DFS:");
@@ -199,7 +198,7 @@ fn main() {
 
     // let protein = vec![H, H, H, H, H, H, H, H, H, P, H, H, H, H, H, H, H, H, H];
 
-    run_all(&protein);
+    run_all(protein);
 
     // let mut rng = rand::rng();
     // let r = random_protein(20, rng.random_range(0..=20));

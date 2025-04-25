@@ -4,7 +4,6 @@ use std::{
     fmt::{Debug, Pointer},
     hash::Hash,
     marker::PhantomData,
-    rc::Rc,
 };
 
 use crate::problem::*;
@@ -118,17 +117,17 @@ where
     }
 }
 
-pub type StackBackend<P> = Vec<Rc<Node<P>>>;
+pub type StackBackend<'a, P> = Vec<&'a Node<'a, P>>;
 
-impl<P> FrontierBackend<P> for StackBackend<P>
+impl<'a, P> FrontierBackend<'a, P> for StackBackend<'a, P>
 where
     P: Utility,
 {
-    fn enqueue(&mut self, item: Rc<Node<P>>) {
+    fn enqueue(&mut self, item: &'a Node<'a, P>) {
         self.push(item);
     }
 
-    fn dequeue(&mut self) -> Option<Rc<Node<P>>> {
+    fn dequeue(&mut self) -> Option<&'a Node<'a, P>> {
         self.pop()
     }
 
@@ -181,20 +180,20 @@ where
     }
 }
 
-pub struct NodeAndCost<P>(Rc<Node<P>>, Reverse<P::Cost>)
+pub struct NodeAndCost<'a, P>(&'a Node<'a, P>, Reverse<P::Cost>)
 where
     P: Utility;
 
-impl<P> NodeAndCost<P>
+impl<'a, P> NodeAndCost<'a, P>
 where
     P: Utility,
 {
-    pub fn new(node: Rc<Node<P>>, cost: P::Cost) -> Self {
+    pub fn new(node: &'a Node<P>, cost: P::Cost) -> Self {
         Self(node, Reverse(cost))
     }
 }
 
-impl<P> Ord for NodeAndCost<P>
+impl<P> Ord for NodeAndCost<'_, P>
 where
     P: Utility,
 {
@@ -203,7 +202,7 @@ where
     }
 }
 
-impl<P> PartialOrd for NodeAndCost<P>
+impl<P> PartialOrd for NodeAndCost<'_, P>
 where
     P: Utility,
 {
@@ -212,7 +211,7 @@ where
     }
 }
 
-impl<P> PartialEq for NodeAndCost<P>
+impl<P> PartialEq for NodeAndCost<'_, P>
 where
     P: Utility,
 {
@@ -221,9 +220,9 @@ where
     }
 }
 
-impl<P> Eq for NodeAndCost<P> where P: Utility {}
+impl<P> Eq for NodeAndCost<'_, P> where P: Utility {}
 
-impl<P> Debug for NodeAndCost<P>
+impl<P> Debug for NodeAndCost<'_, P>
 where
     P: Utility,
 {
@@ -232,16 +231,16 @@ where
     }
 }
 
-pub struct PriorityBackend<P, Policy>
+pub struct PriorityBackend<'a, P, Policy>
 where
     P: Utility,
     Policy: NodeCost<P>,
 {
-    collection: BinaryHeap<NodeAndCost<P>>,
+    collection: BinaryHeap<NodeAndCost<'a, P>>,
     policy: PhantomData<Policy>,
 }
 
-impl<P, Policy> Default for PriorityBackend<P, Policy>
+impl<'a, P, Policy> Default for PriorityBackend<'a, P, Policy>
 where
     P: Utility,
     Policy: NodeCost<P>,
@@ -254,17 +253,17 @@ where
     }
 }
 
-impl<P, Policy> FrontierBackend<P> for PriorityBackend<P, Policy>
+impl<'a, P, Policy> FrontierBackend<'a, P> for PriorityBackend<'a, P, Policy>
 where
     P: Utility,
     Policy: NodeCost<P>,
 {
-    fn enqueue(&mut self, item: Rc<Node<P>>) {
-        let cost = Policy::cost(item.as_ref());
+    fn enqueue(&mut self, item: &'a Node<'a, P>) {
+        let cost = Policy::cost(item);
         self.collection.push(NodeAndCost::new(item, cost));
     }
 
-    fn dequeue(&mut self) -> Option<Rc<Node<P>>> {
+    fn dequeue(&mut self) -> Option<&'a Node<'a, P>> {
         self.collection.pop().map(|x| x.0)
     }
 
@@ -277,7 +276,7 @@ where
     }
 }
 
-impl<P, Policy> Debug for PriorityBackend<P, Policy>
+impl<P, Policy> Debug for PriorityBackend<'_, P, Policy>
 where
     P: Utility<State: Debug, Action: Clone, Cost: Debug>,
     Policy: NodeCost<P>,
@@ -292,7 +291,6 @@ where
     }
 }
 
-// Genera le strutture specifiche utilizzando la macro
-pub type MinCostBackend<P> = PriorityBackend<P, MinCostPolicy>;
-pub type BestFirstBackend<P> = PriorityBackend<P, BestFirstPolicy>;
-pub type AStarBackend<P> = PriorityBackend<P, AStarPolicy>;
+pub type MinCostBackend<'a, P> = PriorityBackend<'a, P, MinCostPolicy>;
+pub type BestFirstBackend<'a, P> = PriorityBackend<'a, P, BestFirstPolicy>;
+pub type AStarBackend<'a, P> = PriorityBackend<'a, P, AStarPolicy>;

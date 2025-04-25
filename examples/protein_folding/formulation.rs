@@ -157,7 +157,7 @@ fn default_cost_f<'a>(problem: &ProteinFolding, state: &'a Board<'a>, new_pos: &
 }
 
 pub struct ProteinFolding<'a> {
-    aminoacids: Vec<AminoAcid>, // len is n
+    pub aminoacids: Vec<AminoAcid>, // len is n
     h_number: u32,
     heuristic: fn(&ProteinFolding, &'a Board<'a>) -> u32,
     cost_f: fn(&ProteinFolding, &'a Board<'a>, &Pos) -> u32,

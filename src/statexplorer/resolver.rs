@@ -3,9 +3,10 @@ use std::{
     collections::HashSet,
     fmt::Debug,
     hash::Hash,
-    rc::Rc,
     time::{Duration, Instant},
 };
+
+use bumpalo::Bump;
 
 use crate::problem::*;
 use crate::statexplorer::frontier::{
@@ -116,46 +117,50 @@ pub enum Verbosity {
     Low,
 }
 
-pub struct Explorer<P, Backend>
+pub struct Explorer<'a, P, Backend>
 where
     P: Utility + SuitableState, // TODO: generalize more
-    Backend: FrontierBackend<P> + Debug,
+    Backend: FrontierBackend<'a, P> + Debug,
 {
     verbosity: Verbosity,
-    problem: P,
+    problem: &'a P,
     explored: HashSet<P::State>,
-    frontier: Frontier<P, Backend>,
+    frontier: Frontier<'a, P, Backend>,
+    arena: &'a Bump,
 }
 
-impl<P, Backend> Explorer<P, Backend>
+impl<'a, P, Backend> Explorer<'a, P, Backend>
 where
     P: SuitableState + Utility<State: Eq + Hash + Clone + Debug, Action: Clone, Cost: Debug>,
-    Backend: FrontierBackend<P> + Debug,
+    Backend: FrontierBackend<'a, P> + Debug,
 {
-    pub fn with_verbosity(problem: P, verbosity: Verbosity) -> Self {
+    pub fn with_verbosity(problem: &'a P, arena: &'a Bump, verbosity: Verbosity) -> Self {
         Self {
             problem: problem,
             verbosity: verbosity,
             explored: HashSet::new(),
             frontier: Frontier::new(),
+            arena: arena,
         }
     }
 
-    pub fn with_low_v(problem: P) -> Self {
+    pub fn with_low_v(problem: &'a P, arena: &'a Bump) -> Self {
         Self {
             problem: problem,
             verbosity: Verbosity::Low,
             explored: HashSet::new(),
             frontier: Frontier::new(),
+            arena: arena,
         }
     }
 
-    pub fn new(problem: P) -> Self {
+    pub fn new(problem: &'a P, arena: &'a Bump) -> Self {
         Self {
             problem: problem,
             verbosity: Verbosity::None,
             explored: HashSet::new(),
             frontier: Frontier::new(),
+            arena: arena,
         }
     }
 
@@ -211,15 +216,15 @@ where
     ) -> InnerResult<P::State, P::Action> {
         self.frontier.reset();
         self.explored.clear();
-        self.frontier.enqueue_or_replace(Node::new(
+        self.frontier.enqueue_or_replace(Node::in_arena(
             None,
             &self.problem,
             init_state,
             None,
             P::Cost::default(),
+            self.arena,
         ));
 
-        //let mut n_iter = 0;
         let result: InnerResult<P::State, P::Action>;
 
         let mut max_frontier_size = 0;
@@ -243,12 +248,13 @@ where
                     for action in self.problem.executable_actions(curr_state) {
                         let (new_state, cost) = self.problem.result(curr_state, &action);
                         if !self.explored.contains(&new_state) {
-                            let new_node = Node::new(
-                                Some(curr_node.clone()),
+                            let new_node = Node::in_arena(
+                                Some(curr_node),
                                 &self.problem,
                                 new_state,
                                 Some(action),
                                 cost,
+                                self.arena,
                             );
                             self.frontier.enqueue_or_replace(new_node);
                         }
@@ -274,24 +280,26 @@ where
     }
 }
 
-pub struct TreeExplorer<P, Backend>
+pub struct TreeExplorer<'a, P, Backend>
 where
     P: SuitableState + Utility,
-    Backend: FrontierBackend<P>,
+    Backend: FrontierBackend<'a, P>,
 {
-    problem: P,
+    problem: &'a P,
     frontier: Backend,
+    arena: &'a Bump,
 }
 
-impl<P, Backend> TreeExplorer<P, Backend>
+impl<'a, P, Backend> TreeExplorer<'a, P, Backend>
 where
     P: SuitableState + Utility<State: Copy, Action: Clone>,
-    Backend: FrontierBackend<P>,
+    Backend: FrontierBackend<'a, P>,
 {
-    pub fn new(problem: P) -> Self {
+    pub fn new(problem: &'a P, arena: &'a Bump) -> Self {
         Self {
             problem: problem,
             frontier: Default::default(),
+            arena: arena,
         }
     }
 
@@ -346,13 +354,14 @@ where
         lim: Option<usize>,
     ) -> InnerResult<P::State, P::Action> {
         self.frontier.reset();
-        self.frontier.enqueue(Rc::new(Node::new(
+        self.frontier.enqueue(Node::in_arena(
             None,
             &self.problem,
             init_state,
             None,
             P::Cost::default(),
-        )));
+            self.arena,
+        ));
 
         //let mut n_iter = 0;
         let result: InnerResult<P::State, P::Action>;
@@ -375,14 +384,15 @@ where
                 if lim.map_or(true, |x| x > depth) {
                     for action in self.problem.executable_actions(curr_state) {
                         let (new_state, cost) = self.problem.result(curr_state, &action);
-                        let new_node = Node::new(
+                        let new_node = Node::in_arena(
                             Some(curr_node),
                             &self.problem,
                             new_state,
                             Some(action),
                             cost,
+                            self.arena,
                         );
-                        self.frontier.enqueue(Rc::new(new_node));
+                        self.frontier.enqueue(new_node);
                     }
                 }
             }
@@ -395,14 +405,14 @@ where
     }
 }
 
-pub type BFSExplorer<P> = Explorer<P, DequeBackend<P>>;
-pub type DFSExplorer<P> = Explorer<P, StackBackend<P>>;
-pub type MinCostExplorer<P> = Explorer<P, MinCostBackend<P>>;
-pub type BestFirstGreedyExplorer<P> = Explorer<P, BestFirstBackend<P>>;
-pub type AStarExplorer<P> = Explorer<P, AStarBackend<P>>;
+pub type BFSExplorer<'a, P> = Explorer<'a, P, DequeBackend<'a, P>>;
+pub type DFSExplorer<'a, P> = Explorer<'a, P, StackBackend<'a, P>>;
+pub type MinCostExplorer<'a, P> = Explorer<'a, P, MinCostBackend<'a, P>>;
+pub type BestFirstGreedyExplorer<'a, P> = Explorer<'a, P, BestFirstBackend<'a, P>>;
+pub type AStarExplorer<'a, P> = Explorer<'a, P, AStarBackend<'a, P>>;
 
-pub type BFSTreeExplorer<P> = TreeExplorer<P, DequeBackend<P>>;
-pub type DFSTreeExplorer<P> = TreeExplorer<P, StackBackend<P>>;
-pub type MinTreeCostExplorer<P> = TreeExplorer<P, MinCostBackend<P>>;
-pub type BestFirstGreedyTreeExplorer<P> = TreeExplorer<P, BestFirstBackend<P>>;
-pub type AStarTreeExplorer<P> = TreeExplorer<P, AStarBackend<P>>;
+pub type BFSTreeExplorer<'a, P> = TreeExplorer<'a, P, DequeBackend<'a, P>>;
+pub type DFSTreeExplorer<'a, P> = TreeExplorer<'a, P, StackBackend<'a, P>>;
+pub type MinTreeCostExplorer<'a, P> = TreeExplorer<'a, P, MinCostBackend<'a, P>>;
+pub type BestFirstGreedyTreeExplorer<'a, P> = TreeExplorer<'a, P, BestFirstBackend<'a, P>>;
+pub type AStarTreeExplorer<'a, P> = TreeExplorer<'a, P, AStarBackend<'a, P>>;

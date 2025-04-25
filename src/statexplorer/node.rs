@@ -5,6 +5,8 @@ use std::hash::Hash;
 use std::ops::Add;
 use std::vec::Vec;
 
+use bumpalo::Bump;
+
 use crate::problem::*;
 
 #[derive(PartialEq, Eq)]
@@ -25,6 +27,16 @@ impl<'a, P> Node<'a, P>
 where
     P: Utility<Action: Clone, Cost: Add<Output = P::Cost>>,
 {
+    pub fn in_arena(
+        parent: Option<&'a Node<'a, P>>,
+        problem: &P,
+        state: P::State,
+        action: Option<P::Action>,
+        cost: P::Cost,
+        arena: &'a Bump,
+    ) -> &'a Self {
+        arena.alloc(Self::new(parent, problem, state, action, cost))
+    }
     pub fn new(
         parent: Option<&'a Node<'a, P>>,
         problem: &P,
