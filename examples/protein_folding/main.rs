@@ -15,13 +15,15 @@ use agent::{
         resolver::TreeExplorer,
     },
 };
+use bumpalo::Bump;
 use formulation::{AminoAcid, Dir, ProteinFolding};
 use rand::seq::SliceRandom;
 
-fn run_example<B: FrontierBackend<ProteinFolding> + std::fmt::Debug>(
+fn run_example<'a, B: FrontierBackend<ProteinFolding<'a>> + std::fmt::Debug>(
     protein: &Vec<AminoAcid>,
+    arena: &'a Bump,
 ) -> Duration {
-    let problem = ProteinFolding::new(protein.clone());
+    let problem = ProteinFolding::new(protein.clone(), arena);
 
     let init_state = problem.init_state();
     let mut resolver = TreeExplorer::<ProteinFolding, B>::new(problem);
@@ -32,11 +34,11 @@ fn run_example<B: FrontierBackend<ProteinFolding> + std::fmt::Debug>(
     r.total_time
 }
 
-type MinCost = MinCostBackend<ProteinFolding>;
-type AStar = AStarBackend<ProteinFolding>;
-type BestFirst = BestFirstBackend<ProteinFolding>;
-type BFS = DequeBackend<ProteinFolding>;
-type DFS = StackBackend<ProteinFolding>;
+type MinCost<'a> = MinCostBackend<ProteinFolding<'a>>;
+type AStar<'a> = AStarBackend<ProteinFolding<'a>>;
+type BestFirst<'a> = BestFirstBackend<ProteinFolding<'a>>;
+type BFS<'a> = DequeBackend<ProteinFolding<'a>>;
+type DFS<'a> = StackBackend<ProteinFolding<'a>>;
 
 fn print_solution(protein: &Vec<AminoAcid>, solution: Vec<Dir>) -> i32 {
     // Genera le posizioni originali degli aminoacidi
@@ -130,9 +132,12 @@ fn print_solution(protein: &Vec<AminoAcid>, solution: Vec<Dir>) -> i32 {
 
 fn run_all(protein: &Vec<AminoAcid>) {
     println!("MinCost:");
-    run_example::<MinCost>(protein);
+    let arena = Bump::new();
+    run_example::<MinCost>(protein, &arena);
+    drop(arena);
+    let arena = Bump::new();
     println!("AStar:");
-    run_example::<AStar>(protein);
+    run_example::<AStar>(protein, &arena);
     // println!("BestFirst:");
     // run_example::<BestFirst>(protein);
     // println!("DFS:");
@@ -153,7 +158,7 @@ fn random_protein(n: usize, h_number: usize) -> Vec<AminoAcid> {
 
     result
 }
-
+/*
 fn random_test(n: usize, iters: usize) {
     for i in 19..=n {
         let mut max_ratio: f64 = 0.0;
@@ -177,7 +182,7 @@ fn random_test(n: usize, iters: usize) {
         }
         println!("protein lenght: {}\n Max ratio: {}", i, max_ratio);
     }
-}
+}*/
 
 fn main() {
     //let protein = vec![P, H, H, P, H, P, P, H, P];
