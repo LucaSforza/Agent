@@ -376,7 +376,7 @@ where
                     for action in self.problem.executable_actions(curr_state) {
                         let (new_state, cost) = self.problem.result(curr_state, &action);
                         let new_node = Node::new(
-                            Some(curr_node.clone()),
+                            Some(curr_node),
                             &self.problem,
                             new_state,
                             Some(action),

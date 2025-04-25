@@ -10,29 +10,29 @@ use std::{
 use crate::problem::*;
 use crate::statexplorer::node::Node;
 
-pub trait FrontierBackend<P>: Default
+pub trait FrontierBackend<'a, P>: Default
 where
     P: Utility,
 {
-    fn enqueue(&mut self, item: Rc<Node<P>>);
-    fn dequeue(&mut self) -> Option<Rc<Node<P>>>;
+    fn enqueue(&mut self, item: &'a Node<'a, P>);
+    fn dequeue(&mut self) -> Option<&'a Node<'a, P>>;
     fn reset(&mut self);
     fn size(&self) -> usize;
 }
 
-pub struct Frontier<P, Backend>
+pub struct Frontier<'a, P, Backend>
 where
     P: Utility,
-    Backend: FrontierBackend<P>,
+    Backend: FrontierBackend<'a, P>,
 {
     collection: Backend,
-    get_node: HashMap<P::State, Rc<Node<P>>>,
+    get_node: HashMap<P::State, &'a Node<'a, P>>,
 }
 
-impl<P, Backend> Frontier<P, Backend>
+impl<'a, P, Backend> Frontier<'a, P, Backend>
 where
     P: Utility<State: Eq + Hash + Clone, Action: Clone>,
-    Backend: FrontierBackend<P>,
+    Backend: FrontierBackend<'a, P>,
 {
     pub fn new() -> Self {
         Self {
@@ -41,9 +41,7 @@ where
         }
     }
 
-    // TODO: change bool into an enum
-    // TODO: change if the cost is less than the actual node
-    pub fn enqueue_or_replace(&mut self, item: Node<P>) -> bool {
+    pub fn enqueue_or_replace(&mut self, item: &'a Node<'a, P>) -> bool {
         let mut to_remove: Option<&P::State> = None;
         if let Some(old_node) = self.get_node.get(item.get_state()) {
             if old_node.get_g_cost() > item.get_g_cost() {
@@ -59,14 +57,13 @@ where
         }
 
         let state = item.get_state().clone();
-        let to_insert = Rc::new(item);
-        assert!(self.get_node.insert(state, to_insert.clone()).is_none());
-        self.collection.enqueue(to_insert);
+        assert!(self.get_node.insert(state, item).is_none());
+        self.collection.enqueue(item);
 
         true
     }
 
-    pub fn dequeue(&mut self) -> Option<Rc<Node<P>>> {
+    pub fn dequeue(&mut self) -> Option<&'a Node<'a, P>> {
         let mut result = self.collection.dequeue();
         while result.clone().map_or(false, |n| n.is_dead()) {
             result = self.collection.dequeue()
@@ -88,27 +85,27 @@ where
     }
 }
 
-impl<P, Backend> Debug for Frontier<P, Backend>
+impl<'a, P, Backend> Debug for Frontier<'a, P, Backend>
 where
     P: Utility,
-    Backend: FrontierBackend<P> + Debug,
+    Backend: FrontierBackend<'a, P> + Debug,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", self.collection)
     }
 }
 
-pub type DequeBackend<P> = VecDeque<Rc<Node<P>>>;
+pub type DequeBackend<'a, P> = VecDeque<&'a Node<'a, P>>;
 
-impl<P> FrontierBackend<P> for DequeBackend<P>
+impl<'a, P> FrontierBackend<'a, P> for DequeBackend<'a, P>
 where
     P: Utility,
 {
-    fn dequeue(&mut self) -> Option<Rc<Node<P>>> {
+    fn dequeue(&mut self) -> Option<&'a Node<'a, P>> {
         self.pop_front()
     }
 
-    fn enqueue(&mut self, item: Rc<Node<P>>) {
+    fn enqueue(&mut self, item: &'a Node<'a, P>) {
         self.push_back(item);
     }
 

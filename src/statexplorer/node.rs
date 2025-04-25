@@ -3,18 +3,17 @@ use std::clone::Clone;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::ops::Add;
-use std::rc::Rc;
 use std::vec::Vec;
 
 use crate::problem::*;
 
 #[derive(PartialEq, Eq)]
-pub struct Node<P>
+pub struct Node<'a, P>
 where
     P: Utility,
 {
     state: P::State,
-    parent: Option<Rc<Self>>,
+    parent: Option<&'a Self>,
     action: Option<P::Action>,
     total_cost: P::Cost,
     heuristic: P::Cost,
@@ -22,12 +21,12 @@ where
     dead: RefCell<bool>,
 }
 
-impl<P> Node<P>
+impl<'a, P> Node<'a, P>
 where
     P: Utility<Action: Clone, Cost: Add<Output = P::Cost>>,
 {
     pub fn new(
-        parent: Option<Rc<Node<P>>>,
+        parent: Option<&'a Node<'a, P>>,
         problem: &P,
         state: P::State,
         action: Option<P::Action>,
@@ -58,7 +57,7 @@ where
 
         if self.action.is_some() {
             result.push(self.action.clone().unwrap());
-            let mut current_node: Option<Rc<Node<P>>> = self.parent.clone();
+            let mut current_node = self.parent;
 
             while let Some(node) = current_node {
                 if let Some(action) = &node.action {
@@ -100,7 +99,7 @@ where
     }
 }
 
-impl<P> Debug for Node<P>
+impl<P> Debug for Node<'_, P>
 where
     P: Utility<State: Debug, Action: Clone, Cost: Debug + Add<Output = P::Cost>>,
 {
@@ -116,7 +115,7 @@ where
     }
 }
 
-impl<P> std::hash::Hash for Node<P>
+impl<P> std::hash::Hash for Node<'_, P>
 where
     P: Utility<State: Hash, Cost: Hash>,
 {
