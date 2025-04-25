@@ -2,6 +2,7 @@ mod formulation;
 
 use std::{
     collections::{HashMap, HashSet},
+    str::FromStr,
     time::Duration,
 };
 
@@ -22,13 +23,23 @@ use rand::seq::SliceRandom;
 fn run_example<'a, B: FrontierBackend<'a, ProteinFolding<'a>> + std::fmt::Debug>(
     arena: &'a Bump,
     problem: &'a ProteinFolding<'a>,
-) -> Duration {
+) {
     let init_state = problem.init_state();
     let mut resolver = TreeExplorer::<'a, ProteinFolding, B>::new(problem, arena);
 
     let r = resolver.search(init_state);
     println!("{}", r);
     print_solution(&problem.aminoacids, r.actions.unwrap());
+}
+
+fn run_example_get_time<'a, B: FrontierBackend<'a, ProteinFolding<'a>>>(
+    arena: &'a Bump,
+    problem: &'a ProteinFolding<'a>,
+) -> Duration {
+    let init_state = problem.init_state();
+    let mut resolver = TreeExplorer::<'a, ProteinFolding, B>::new(problem, arena);
+
+    let r = resolver.search(init_state);
     r.total_time
 }
 
@@ -129,14 +140,20 @@ fn print_solution(protein: &Vec<AminoAcid>, solution: Vec<Dir>) -> i32 {
 }
 
 fn run_all(protein: Vec<AminoAcid>) {
-    let arena = Bump::new();
-    let problem = ProteinFolding::new(protein, &arena);
-    println!("MinCost:");
-    // let arena = Bump::new();
-    // run_example::<MinCost>(protein, &arena);
-    // drop(arena);
-    println!("AStar:");
-    run_example::<AStar>(&arena, &problem);
+    {
+        let arena_problem = Bump::new();
+        let problem = ProteinFolding::new(protein.clone(), &arena_problem);
+        println!("MinCost:");
+        let arena_explorer = Bump::new();
+        run_example::<MinCost>(&arena_explorer, &problem);
+    }
+    {
+        let arena_problem = Bump::new();
+        let problem = ProteinFolding::new(protein, &arena_problem);
+        println!("AStar:");
+        let arena_explorer = Bump::new();
+        run_example::<AStar>(&arena_explorer, &problem);
+    }
     // println!("BestFirst:");
     // run_example::<BestFirst>(protein);
     // println!("DFS:");
@@ -157,16 +174,20 @@ fn random_protein(n: usize, h_number: usize) -> Vec<AminoAcid> {
 
     result
 }
-/*
+
 fn random_test(n: usize, iters: usize) {
-    for i in 19..=n {
+    let mut arena = Bump::new();
+
+    for i in 1..=n {
         let mut max_ratio: f64 = 0.0;
         let mut max_time = Duration::default();
         for j in 0..=i {
             let mut med = Duration::default();
             for _ in 0..iters {
                 let r = random_protein(i, j);
-                let d = run_example::<AStar>(&r);
+                let problem = ProteinFolding::new(r, &arena);
+                let d = run_example_get_time::<AStar>(&arena, &problem);
+                arena.reset();
                 med += d / iters as u32;
             }
             let ratio = j as f64 / i as f64;
@@ -181,24 +202,59 @@ fn random_test(n: usize, iters: usize) {
         }
         println!("protein lenght: {}\n Max ratio: {}", i, max_ratio);
     }
-}*/
+}
+
+use clap::Parser;
+
+#[derive(Debug, Clone)]
+struct AminoAcidSequence(Vec<AminoAcid>);
+
+// Implement FromStr to parse a string into AminoAcidSequence
+impl std::str::FromStr for AminoAcidSequence {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut result = Vec::with_capacity(s.len());
+        for c in s.chars() {
+            match c {
+                'H' => result.push(AminoAcid::H),
+                'P' => result.push(AminoAcid::P),
+                _ => return Err(format!("Invalid aminoacid '{}'", c)),
+            }
+        }
+        Ok(AminoAcidSequence(result))
+    }
+}
+
+#[derive(Parser)]
+enum Commands {
+    RunProtein {
+        aminoacids: AminoAcidSequence,
+    },
+    RandTest {
+        #[clap(short, long)]
+        len: usize,
+        #[clap(short, long)]
+        iters: usize,
+    },
+}
+
+/*
+Example values:
+    PHHPHPPHP
+    HHPHPPHHHPPPPHH
+    HHPHPHHHPPPPHHPP
+    HHPHPHHHPPPPHHPHPHPPHPHPH da controllare
+    HHPHPPHHHPPPPHHPHPHPPHPHPHH
+*/
 
 fn main() {
-    //let protein = vec![P, H, H, P, H, P, P, H, P];
+    let args = Commands::parse();
 
-    // let protein = vec![H, H, P, H, P, P, H, H, H, P, P, P, P, H, H, P];
-
-    let protein = vec![
-        H, H, P, H, P, P, H, H, H, P, P, P, P, H, H, P, H, P, H, P, P, H, P, H, P, H,
-    ];
-
-    // let protein = vec![
-    //     H, H, P, H, P, P, H, H, H, P, P, P, P, H, H, P, H, P, H, P, P, H, P, H, P, H, H,
-    // ];
-
-    // let protein = vec![H, H, H, H, H, H, H, H, H, P, H, H, H, H, H, H, H, H, H];
-
-    run_all(protein);
+    match args {
+        Commands::RunProtein { aminoacids } => run_all(aminoacids.0),
+        Commands::RandTest { len, iters } => random_test(len, iters),
+    }
 
     // let mut rng = rand::rng();
     // let r = random_protein(20, rng.random_range(0..=20));

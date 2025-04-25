@@ -6,4 +6,7 @@ if [ -d $1 ]; then
     exit 1
 fi
 
-cargo run --package agent --example $1 --release
+EXAMPLE=$1
+shift
+
+cargo run --package agent --example $EXAMPLE --release -- $@
