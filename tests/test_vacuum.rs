@@ -17,13 +17,6 @@ mod tests {
         Down,
         Up,
         Suck,
-        Nothing,
-    }
-
-    impl Default for Action {
-        fn default() -> Self {
-            Self::Nothing
-        }
     }
 
     #[derive(Clone, PartialEq, Eq, Hash, Debug)]
@@ -93,6 +86,7 @@ mod tests {
         }
     }
 
+    use bumpalo::Bump;
     use ordered_float::OrderedFloat;
 
     impl Problem for CleanProblem {
@@ -104,10 +98,7 @@ mod tests {
         type Cost = OrderedFloat<f64>;
 
         fn executable_actions(&self, state: &Self::State) -> impl Iterator<Item = Self::Action> {
-            let mut actions = Vec::with_capacity(6); // TODO: change this
-            if self.is_suitable(state) {
-                actions.push(Action::Nothing);
-            }
+            let mut actions = Vec::with_capacity(5);
             if state.is_dirty() {
                 actions.push(Action::Suck);
             }
@@ -139,7 +130,6 @@ mod tests {
                     let new_dirty = new_dirty.into_iter().filter(|e| *e != state.pos).collect();
                     state.clean(new_dirty)
                 }
-                Action::Nothing => state.clone(),
                 Action::Down => state.new_position(state.pos.x, state.pos.y + 1),
                 Action::Up => state.new_position(state.pos.x, state.pos.y - 1),
             };
@@ -173,7 +163,8 @@ mod tests {
                 Pos::new(31, 31),
             ],
         );
-        let mut explorer = BFSExplorer::new(problem);
+        let arena = Bump::new();
+        let mut explorer = BFSExplorer::new(&problem, &arena);
         let result = explorer.search(init_state);
         assert!(result.actions.is_some());
         let res = result.actions.unwrap();
@@ -187,7 +178,8 @@ mod tests {
     fn test_vacuum_bfs_clean() {
         let problem = CleanProblem::new(32, 32);
         let init_state = HouseState::with_dirty(3, 2, vec![]);
-        let mut explorer = BFSExplorer::new(problem);
+        let arena = Bump::new();
+        let mut explorer = BFSExplorer::new(&problem, &arena);
         let result = explorer.search(init_state);
         assert!(result.actions.is_some());
         let res = result.actions.unwrap();
@@ -200,7 +192,8 @@ mod tests {
     #[test]
     fn test_vacuum_dfs() {
         let problem = CleanProblem::new(32, 32);
-        let mut explorer = DFSExplorer::new(problem);
+        let arena = Bump::new();
+        let mut explorer = DFSExplorer::new(&problem, &arena);
         let init_state = HouseState::with_dirty(
             3,
             2,
@@ -224,7 +217,8 @@ mod tests {
     #[test]
     fn test_vacuum_dfs_clean() {
         let problem = CleanProblem::new(32, 32);
-        let mut explorer = DFSExplorer::new(problem);
+        let arena = Bump::new();
+        let mut explorer = DFSExplorer::new(&problem, &arena);
         let init_state = HouseState::with_dirty(3, 2, vec![]);
         let result = explorer.search(init_state);
         assert!(result.actions.is_some());
@@ -254,7 +248,8 @@ mod tests {
         ];
         let problem = CleanProblem::new(5, 5);
         let init_state = HouseState::with_dirty(4, 3, pos);
-        let mut explorer = DFSExplorer::new(problem);
+        let arena = Bump::new();
+        let mut explorer = DFSExplorer::new(&problem, &arena);
         let sresult = explorer.search(init_state);
         assert!(sresult.actions.is_some());
         // let actions = sresult.actions.clone().unwrap();
@@ -310,7 +305,8 @@ mod tests {
         ];
         let problem = CleanProblem::new(5, 5);
         let init_state = HouseState::with_dirty(3, 4, pos);
-        let mut explorer = BFSExplorer::new(problem);
+        let arena = Bump::new();
+        let mut explorer = BFSExplorer::new(&problem, &arena);
         let sresult = explorer.search(init_state);
         assert!(sresult.actions.is_some());
         let actions = sresult.actions.clone().unwrap();
@@ -368,7 +364,8 @@ mod tests {
         ];
         let problem = CleanProblem::new(5, 5);
         let init_state = HouseState::with_dirty(3, 4, pos);
-        let mut explorer = MinCostExplorer::new(problem);
+        let arena = Bump::new();
+        let mut explorer = MinCostExplorer::new(&problem, &arena);
         let sresult = explorer.search(init_state);
         assert!(sresult.actions.is_some());
         let actions = sresult.actions.clone().unwrap();
@@ -444,7 +441,8 @@ mod tests {
         ];
         let problem = CleanProblem::new(5, 5);
         let init_state = HouseState::with_dirty(3, 4, pos);
-        let mut explorer = DFSExplorer::new(problem);
+        let arena = Bump::new();
+        let mut explorer = DFSExplorer::new(&problem, &arena);
         let sresult = explorer.iterative_search(init_state, 300);
         assert!(sresult.actions.is_some());
         let actions = sresult.actions.clone().unwrap();
@@ -471,7 +469,8 @@ mod tests {
         ];
         let problem = CleanProblem::new(5, 5);
         let init_state = HouseState::with_dirty(3, 4, pos);
-        let mut explorer = BestFirstGreedyExplorer::new(problem);
+        let arena = Bump::new();
+        let mut explorer = BestFirstGreedyExplorer::new(&problem, &arena);
         let sresult = explorer.search(init_state);
         assert!(sresult.actions.is_some());
         // let actions = sresult.actions.clone().unwrap();
@@ -529,7 +528,8 @@ mod tests {
         ];
         let problem = CleanProblem::new(5, 5);
         let init_state = HouseState::with_dirty(3, 4, pos);
-        let mut explorer = AStarExplorer::new(problem);
+        let arena = Bump::new();
+        let mut explorer = AStarExplorer::new(&problem, &arena);
         let sresult = explorer.search(init_state);
         assert!(sresult.actions.is_some());
         let actions = sresult.actions.clone().unwrap();

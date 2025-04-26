@@ -44,6 +44,7 @@ mod tests {
         }
     }
 
+    use bumpalo::Bump;
     use ordered_float::OrderedFloat;
 
     struct CleanProblem {}
@@ -116,7 +117,8 @@ mod tests {
     #[test]
     fn test_bfs_clean_left_dirty_right() {
         let problem = CleanProblem::new();
-        let mut explorer = BFSExplorer::new(problem);
+        let arena = Bump::new();
+        let mut explorer = BFSExplorer::new(&problem, &arena);
         let init_state = HouseState::from_parts(Position::Left, TailState::Clean, TailState::Dirty);
         let result = explorer.search(init_state);
         assert!(result.actions.is_some());
@@ -133,7 +135,8 @@ mod tests {
         let problem = CleanProblem::new();
         let init_state =
             HouseState::from_parts(Position::Right, TailState::Dirty, TailState::Clean);
-        let mut explorer = BFSExplorer::new(problem);
+        let arena = Bump::new();
+        let mut explorer = BFSExplorer::new(&problem, &arena);
 
         let result = explorer.search(init_state);
         assert!(result.actions.is_some());
@@ -149,7 +152,8 @@ mod tests {
     fn test_bfs_both_dirty() {
         let problem = CleanProblem::new();
         let init_state = HouseState::from_parts(Position::Left, TailState::Dirty, TailState::Dirty);
-        let mut explorer = BFSExplorer::new(problem);
+        let arena = Bump::new();
+        let mut explorer = BFSExplorer::new(&problem, &arena);
         let result = explorer.search(init_state);
         assert!(result.actions.is_some());
         let res = result.actions.unwrap();
@@ -165,7 +169,8 @@ mod tests {
         let problem = CleanProblem::new();
         let init_state =
             HouseState::from_parts(Position::Right, TailState::Clean, TailState::Clean);
-        let mut explorer = BFSExplorer::new(problem);
+        let arena = Bump::new();
+        let mut explorer = BFSExplorer::new(&problem, &arena);
         let result = explorer.search(init_state);
         assert!(result.actions.is_some());
         let res = result.actions.unwrap();
@@ -179,7 +184,8 @@ mod tests {
     #[test]
     fn test_dfs_clean_left_dirty_right() {
         let problem = CleanProblem::new();
-        let mut explorer = DFSExplorer::new(problem);
+        let arena = Bump::new();
+        let mut explorer = DFSExplorer::new(&problem, &arena);
         let init_state = HouseState::from_parts(Position::Left, TailState::Clean, TailState::Dirty);
         let result = explorer.search(init_state);
         assert!(result.actions.is_some());
@@ -194,7 +200,8 @@ mod tests {
     #[test]
     fn test_dfs_dirty_left_clean_right() {
         let problem = CleanProblem::new();
-        let mut explorer = DFSExplorer::new(problem);
+        let arena = Bump::new();
+        let mut explorer = DFSExplorer::new(&problem, &arena);
         let init_state =
             HouseState::from_parts(Position::Right, TailState::Dirty, TailState::Clean);
         let result = explorer.search(init_state);
@@ -210,7 +217,8 @@ mod tests {
     #[test]
     fn test_dfs_both_dirty() {
         let problem = CleanProblem::new();
-        let mut explorer = DFSExplorer::new(problem);
+        let arena = Bump::new();
+        let mut explorer = DFSExplorer::new(&problem, &arena);
         let init_state = HouseState::from_parts(Position::Left, TailState::Dirty, TailState::Dirty);
         let result = explorer.search(init_state);
         assert!(result.actions.is_some());
@@ -225,7 +233,8 @@ mod tests {
     #[test]
     fn test_dfs_both_clean() {
         let problem = CleanProblem::new();
-        let mut explorer = DFSExplorer::new(problem);
+        let arena = Bump::new();
+        let mut explorer = DFSExplorer::new(&problem, &arena);
         let init_state =
             HouseState::from_parts(Position::Right, TailState::Clean, TailState::Clean);
         let result = explorer.search(init_state);
