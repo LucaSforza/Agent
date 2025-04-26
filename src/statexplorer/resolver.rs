@@ -6,6 +6,8 @@ use std::{
     time::{Duration, Instant},
 };
 
+use bumpalo::Bump;
+
 use crate::problem::*;
 use crate::statexplorer::frontier::{
     AStarBackend, BestFirstBackend, DequeBackend, Frontier, FrontierBackend, MinCostBackend,
@@ -115,60 +117,50 @@ pub enum Verbosity {
     Low,
 }
 
-pub struct Explorer<P, Backend>
+pub struct Explorer<'a, P, Backend>
 where
     P: Utility + SuitableState, // TODO: generalize more
-    Backend: FrontierBackend<P> + Debug,
+    Backend: FrontierBackend<'a, P> + Debug,
 {
     verbosity: Verbosity,
-    problem: P,
+    problem: &'a P,
     explored: HashSet<P::State>,
-    frontier: Frontier<P, Backend>,
-    tree_exploration: bool,
+    frontier: Frontier<'a, P, Backend>,
+    arena: &'a Bump,
 }
 
-impl<P, Backend> Explorer<P, Backend>
+impl<'a, P, Backend> Explorer<'a, P, Backend>
 where
     P: SuitableState + Utility<State: Eq + Hash + Clone + Debug, Action: Clone, Cost: Debug>,
-    Backend: FrontierBackend<P> + Debug,
+    Backend: FrontierBackend<'a, P> + Debug,
 {
-    pub fn tree_state_esploration(problem: P) -> Self {
-        Self {
-            problem: problem,
-            verbosity: Verbosity::None,
-            explored: HashSet::new(),
-            frontier: Frontier::new(),
-            tree_exploration: true,
-        }
-    }
-
-    pub fn with_verbosity(problem: P, verbosity: Verbosity) -> Self {
+    pub fn with_verbosity(problem: &'a P, arena: &'a Bump, verbosity: Verbosity) -> Self {
         Self {
             problem: problem,
             verbosity: verbosity,
             explored: HashSet::new(),
             frontier: Frontier::new(),
-            tree_exploration: false,
+            arena: arena,
         }
     }
 
-    pub fn with_low_v(problem: P) -> Self {
+    pub fn with_low_v(problem: &'a P, arena: &'a Bump) -> Self {
         Self {
             problem: problem,
             verbosity: Verbosity::Low,
             explored: HashSet::new(),
             frontier: Frontier::new(),
-            tree_exploration: false,
+            arena: arena,
         }
     }
 
-    pub fn new(problem: P) -> Self {
+    pub fn new(problem: &'a P, arena: &'a Bump) -> Self {
         Self {
             problem: problem,
             verbosity: Verbosity::None,
             explored: HashSet::new(),
             frontier: Frontier::new(),
-            tree_exploration: false,
+            arena: arena,
         }
     }
 
@@ -224,15 +216,15 @@ where
     ) -> InnerResult<P::State, P::Action> {
         self.frontier.reset();
         self.explored.clear();
-        self.frontier.enqueue_or_replace(Node::new(
+        self.frontier.enqueue_or_replace(Node::in_arena(
             None,
             &self.problem,
             init_state,
             None,
             P::Cost::default(),
+            self.arena,
         ));
 
-        //let mut n_iter = 0;
         let result: InnerResult<P::State, P::Action>;
 
         let mut max_frontier_size = 0;
@@ -255,22 +247,21 @@ where
                 if lim.map_or(true, |x| x > depth) {
                     for action in self.problem.executable_actions(curr_state) {
                         let (new_state, cost) = self.problem.result(curr_state, &action);
-                        if self.tree_exploration || !self.explored.contains(&new_state) {
-                            let new_node = Node::new(
-                                Some(curr_node.clone()),
+                        if !self.explored.contains(&new_state) {
+                            let new_node = Node::in_arena(
+                                Some(curr_node),
                                 &self.problem,
                                 new_state,
                                 Some(action),
                                 cost,
+                                self.arena,
                             );
                             self.frontier.enqueue_or_replace(new_node);
                         }
                     }
                 }
             }
-            if !self.tree_exploration {
-                self.explored.insert(curr_state.clone());
-            }
+            self.explored.insert(curr_state.clone());
             if max_frontier_size < self.frontier.size() {
                 max_frontier_size = self.frontier.size();
             }
@@ -289,8 +280,139 @@ where
     }
 }
 
-pub type BFSExplorer<P> = Explorer<P, DequeBackend<P>>;
-pub type DFSExplorer<P> = Explorer<P, StackBackend<P>>;
-pub type MinCostExplorer<P> = Explorer<P, MinCostBackend<P>>;
-pub type BestFirstGreedyExplorer<P> = Explorer<P, BestFirstBackend<P>>;
-pub type AStarExplorer<P> = Explorer<P, AStarBackend<P>>;
+pub struct TreeExplorer<'a, P, Backend>
+where
+    P: SuitableState + Utility,
+    Backend: FrontierBackend<'a, P>,
+{
+    problem: &'a P,
+    frontier: Backend,
+    arena: &'a Bump,
+}
+
+impl<'a, P, Backend> TreeExplorer<'a, P, Backend>
+where
+    P: SuitableState + Utility<State: Copy, Action: Clone>,
+    Backend: FrontierBackend<'a, P>,
+{
+    pub fn new(problem: &'a P, arena: &'a Bump) -> Self {
+        Self {
+            problem: problem,
+            frontier: Default::default(),
+            arena: arena,
+        }
+    }
+
+    pub fn iterative_search(
+        &mut self,
+        init_state: P::State,
+        max_limit: usize,
+    ) -> SearchResult<P::State, P::Action> {
+        let mut lim = 1;
+        let mut result = SearchResult::new();
+        let start = Instant::now();
+        let mut n_iter = 0;
+        loop {
+            if max_limit < lim {
+                result.n_iter = n_iter;
+                result.total_time = start.elapsed();
+                return result;
+            }
+            let inner_result = self.inner_search(&mut n_iter, init_state.clone(), lim.into());
+            if result.max_frontier_size < inner_result.max_frontier_size {
+                result.max_frontier_size = inner_result.max_frontier_size
+            }
+            if inner_result.actions.is_some() {
+                return SearchResult::from_inner_result(start, n_iter, inner_result);
+            }
+            lim += 1
+        }
+    }
+
+    pub fn search_with_max_depth(
+        &mut self,
+        init_state: P::State,
+        max_depth: usize,
+    ) -> SearchResult<P::State, P::Action> {
+        let start = Instant::now();
+        let mut n_iter = 0;
+        let result = self.inner_search(&mut n_iter, init_state, max_depth.into());
+        SearchResult::from_inner_result(start, n_iter, result)
+    }
+
+    pub fn search(&mut self, init_state: P::State) -> SearchResult<P::State, P::Action> {
+        let start = Instant::now();
+        let mut n_iter = 0;
+        let result = self.inner_search(&mut n_iter, init_state, None);
+        SearchResult::from_inner_result(start, n_iter, result)
+    }
+
+    fn inner_search(
+        &mut self,
+        n_iter: &mut usize,
+        init_state: P::State,
+        lim: Option<usize>,
+    ) -> InnerResult<P::State, P::Action> {
+        self.frontier.reset();
+        self.frontier.enqueue(Node::in_arena(
+            None,
+            &self.problem,
+            init_state,
+            None,
+            P::Cost::default(),
+            self.arena,
+        ));
+
+        //let mut n_iter = 0;
+        let result: InnerResult<P::State, P::Action>;
+
+        let mut max_frontier_size = 0;
+        while let Some(curr_node) = self.frontier.dequeue() {
+            *n_iter += 1;
+
+            let curr_state = curr_node.get_state();
+
+            if self.problem.is_suitable(&curr_state) {
+                result = InnerResult::<P::State, P::Action>::found(
+                    *curr_node.get_state(),
+                    curr_node.get_plan().into(),
+                    max_frontier_size,
+                );
+                return result;
+            } else {
+                let depth = curr_node.get_depth();
+                if lim.map_or(true, |x| x > depth) {
+                    for action in self.problem.executable_actions(curr_state) {
+                        let (new_state, cost) = self.problem.result(curr_state, &action);
+                        let new_node = Node::in_arena(
+                            Some(curr_node),
+                            &self.problem,
+                            new_state,
+                            Some(action),
+                            cost,
+                            self.arena,
+                        );
+                        self.frontier.enqueue(new_node);
+                    }
+                }
+            }
+            if max_frontier_size < self.frontier.size() {
+                max_frontier_size = self.frontier.size();
+            }
+        }
+        result = InnerResult::<P::State, P::Action>::not_found(max_frontier_size);
+        return result;
+    }
+}
+
+pub type BFSExplorer<'a, P> = Explorer<'a, P, DequeBackend<'a, P>>;
+pub type DFSExplorer<'a, P> = Explorer<'a, P, StackBackend<'a, P>>;
+pub type MinCostExplorer<'a, P> = Explorer<'a, P, MinCostBackend<'a, P>>;
+pub type BestFirstGreedyExplorer<'a, P> = Explorer<'a, P, BestFirstBackend<'a, P>>;
+pub type AStarExplorer<'a, P> = Explorer<'a, P, AStarBackend<'a, P>>;
+
+pub type BFSTreeExplorer<'a, P> = TreeExplorer<'a, P, DequeBackend<'a, P>>;
+pub type DFSTreeExplorer<'a, P> = TreeExplorer<'a, P, StackBackend<'a, P>>;
+pub type MinTreeCostExplorer<'a, P> = TreeExplorer<'a, P, MinCostBackend<'a, P>>;
+pub type BestFirstGreedyTreeExplorer<'a, P> = TreeExplorer<'a, P, BestFirstBackend<'a, P>>;
+pub type AStarTreeExplorer<'a, P> = TreeExplorer<'a, P, AStarBackend<'a, P>>;

@@ -7,10 +7,14 @@ use agent::improve::{
     resolver::Resolver,
 };
 use agent::problem::{
-    CostructSolution, Crossover, Problem, StatePerturbation, SuitableState, Utility,
+    CostructSolution, Crossover, InitState, Problem, StatePerturbation, SuitableState, Utility,
 };
-use agent::statexplorer::resolver::{AStarExplorer, BestFirstGreedyExplorer, MinCostExplorer};
+use agent::statexplorer::frontier::{
+    AStarBackend, BestFirstBackend, FrontierBackend, MinCostBackend,
+};
+use agent::statexplorer::resolver::Explorer;
 
+use bumpalo::Bump;
 use ordered_float::OrderedFloat;
 
 type NextQueenPos = usize;
@@ -356,34 +360,78 @@ fn run_nqueen(n: usize, iterations: u32, restarts: usize) {
     resolve_nqueen(&problem, &mut resolver, iterations);
 }
 
-fn run_nqueen_explorer(n: usize) {
+fn run_nqueen_explorer<'a, Backend: FrontierBackend<'a, NQueen> + fmt::Debug>(
+    problem: &'a NQueen,
+    arena: &'a Bump,
+) {
+    let mut explorer = Explorer::<'a, NQueen, Backend>::new(problem, arena);
+
+    let result = explorer.search(problem.init_state());
+
+    println!("result:\n{}", result);
+    if let Some(state) = result.state {
+        println!("h: {}", problem.heuristic(&state));
+    } else {
+        println!("NO SOLUTION FOUND");
+    }
+}
+
+fn run_nqueens_explorer(n: usize) {
     let problem = NQueen::new(n);
 
+    let mut arena = Bump::new();
+
     println!("A*:");
-    let mut explorer = AStarExplorer::new(problem.clone());
+    run_nqueen_explorer::<AStarBackend<NQueen>>(&problem, &arena);
 
-    let result = explorer.search(DeploymentQueens::default());
-
-    println!("{}", result);
+    arena.reset();
 
     println!("MinCost:");
-    let mut explorer = MinCostExplorer::new(problem.clone());
 
-    let result = explorer.search(DeploymentQueens::default());
+    run_nqueen_explorer::<MinCostBackend<NQueen>>(&problem, &arena);
 
-    println!("{}", result);
+    arena.reset();
 
-    println!("BestFirst:");
-    let mut explorer = BestFirstGreedyExplorer::new(problem);
+    println!("Best First:");
+    run_nqueen_explorer::<BestFirstBackend<NQueen>>(&problem, &arena);
 
-    let result = explorer.search(DeploymentQueens::default());
+    arena.reset();
+}
 
-    println!("{}", result);
+use clap::Parser;
+
+#[derive(Parser)]
+#[command(author = "Luca Sforza", version, about)]
+enum Command {
+    StateExploration {
+        n: usize,
+    },
+    OneTime {
+        #[clap(short)]
+        n: usize,
+        #[clap(short, long)]
+        restarts: usize,
+    },
+    Perform {
+        #[clap(short)]
+        n: usize,
+        #[clap(short, long)]
+        iterations: u32,
+        #[clap(short, long)]
+        restarts: usize,
+    },
 }
 
 fn main() {
-    run_nqueen(8, 2500, 10);
-    run_one_time_nqueen(8, 10);
+    let args = Command::parse();
 
-    run_nqueen_explorer(8);
+    match args {
+        Command::StateExploration { n } => run_nqueens_explorer(n),
+        Command::OneTime { n, restarts } => run_one_time_nqueen(n, restarts),
+        Command::Perform {
+            n,
+            iterations,
+            restarts,
+        } => run_nqueen(n, iterations, restarts),
+    }
 }

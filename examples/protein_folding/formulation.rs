@@ -1,6 +1,6 @@
-use std::rc::Rc;
+use agent::problem::{CostructSolution, InitState, Problem, SuitableState, Utility};
 
-use agent::problem::{CostructSolution, Problem, SuitableState, Utility};
+use bumpalo::Bump;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum AminoAcid {
@@ -8,7 +8,7 @@ pub enum AminoAcid {
     P,
 }
 
-#[derive(Clone, Copy, Hash, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Dir {
     Up,
     Down,
@@ -16,7 +16,7 @@ pub enum Dir {
     Right,
 }
 
-#[derive(Clone, Copy, Hash, PartialEq, Default)]
+#[derive(Clone, Copy, PartialEq, Default)]
 pub struct Pos {
     x: isize,
     y: isize,
@@ -40,32 +40,46 @@ impl Pos {
 }
 
 #[derive(Clone, Default)]
-pub struct Board {
-    last: Option<Rc<Board>>,
+pub struct Board<'a> {
+    last: Option<&'a Self>,
     pos: Pos,
     depth: usize,
     has_turned: bool,
     total_contacs: u32,
 }
 
-impl std::hash::Hash for Board {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        /*if let Some(last) = self.last.clone() {
-            last.hash(state);
-        }*/
-        if let Some(last) = self.last.clone() {
-            last.hash(state);
-        }
-        self.pos.hash(state);
-        // self.depth.hash(state);
-        // self.has_turned.hash(state);
-        // self.total_contacs.hash(state);
-        // self.local_contacs.hash(state);
-        // self.contacs.hash(state);
+pub struct BoardIterator<'a> {
+    head: Option<&'a Board<'a>>,
+}
+
+impl<'a> BoardIterator<'a> {
+    fn from_parts(head: Option<&'a Board<'a>>) -> Self {
+        Self { head: head }
+    }
+
+    fn new(board: &'a Board) -> Self {
+        Self { head: board.into() }
+    }
+
+    fn void_iter() -> Self {
+        Self { head: None }
     }
 }
 
-impl PartialEq for Board {
+impl<'a> Iterator for BoardIterator<'a> {
+    type Item = &'a Board<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(board) = self.head.clone() {
+            self.head = board.last.clone();
+            Some(board)
+        } else {
+            None
+        }
+    }
+}
+
+impl PartialEq for Board<'_> {
     fn eq(&self, other: &Self) -> bool {
         if self.depth != other.depth {
             return false;
@@ -87,15 +101,15 @@ impl PartialEq for Board {
     }
 }
 
-impl Eq for Board {}
+impl Eq for Board<'_> {}
 
-impl std::fmt::Debug for Board {
+impl std::fmt::Debug for Board<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "contacts: {}", self.total_contacs)
     }
 }
 
-impl Board {
+impl<'a> Board<'a> {
     fn suitable(&self, pos: &Pos) -> bool {
         if self.pos == *pos {
             return false;
@@ -112,51 +126,65 @@ impl Board {
         return true;
     }
 
-    fn cost_f(&self, problem: &ProteinFolding, new_pos: &Pos) -> u32 {
-        if problem.aminoacids[self.depth + 1] != AminoAcid::H {
-            return 0;
-        }
-        // assume the aminoacid is H
-        let max_attacts = 3;
-        let mut attacts = 0;
-
-        let mut last = self.last.clone();
-
-        while let Some(l) = last {
-            if problem.aminoacids[l.depth] == AminoAcid::H {
-                if l.pos.x.abs_diff(new_pos.x) + l.pos.y.abs_diff(new_pos.y) == 1 {
-                    attacts += 1;
-                }
-            }
-            last = l.last.clone()
-        }
-        max_attacts - attacts
+    fn iter(self: &'a Self) -> BoardIterator<'a> {
+        BoardIterator { head: self.into() }
     }
 }
 
-pub struct ProteinFolding {
-    aminoacids: Vec<AminoAcid>, // len is n
-    h_numer: u32,
+fn default_heuristic<'a>(problem: &ProteinFolding, state: &'a Board<'a>) -> u32 {
+    problem.h_number - state.total_contacs
 }
 
-impl ProteinFolding {
-    pub fn new(aminoacid: Vec<AminoAcid>) -> Self {
+fn default_cost_f<'a>(problem: &ProteinFolding, state: &'a Board<'a>, new_pos: &Pos) -> u32 {
+    if problem.aminoacids[state.depth + 1] != AminoAcid::H {
+        return 0;
+    }
+    // assume the aminoacid is H
+    let max_attacts = 3;
+    let mut attacts = 0;
+
+    let mut last = state.last.clone();
+
+    while let Some(l) = last {
+        if problem.aminoacids[l.depth] == AminoAcid::H {
+            if l.pos.x.abs_diff(new_pos.x) + l.pos.y.abs_diff(new_pos.y) == 1 {
+                attacts += 1;
+            }
+        }
+        last = l.last.clone()
+    }
+    max_attacts - attacts
+}
+
+pub struct ProteinFolding<'a> {
+    pub aminoacids: Vec<AminoAcid>, // len is n
+    h_number: u32,
+    heuristic: fn(&ProteinFolding, &'a Board<'a>) -> u32,
+    cost_f: fn(&ProteinFolding, &'a Board<'a>, &Pos) -> u32,
+    arena: &'a Bump,
+}
+
+impl<'a> ProteinFolding<'a> {
+    pub fn new(aminoacid: Vec<AminoAcid>, arena: &'a Bump) -> Self {
         let h_number = aminoacid
             .iter()
             .map(|x| if *x == AminoAcid::H { 1 } else { 0 })
             .sum();
         Self {
             aminoacids: aminoacid,
-            h_numer: h_number,
+            h_number: h_number,
+            heuristic: default_heuristic,
+            cost_f: default_cost_f,
+            arena: arena,
         }
     }
 }
 
-impl Problem for ProteinFolding {
-    type State = Rc<Board>;
+impl<'a> Problem for ProteinFolding<'a> {
+    type State = &'a Board<'a>;
 }
 
-impl CostructSolution for ProteinFolding {
+impl<'a> CostructSolution for ProteinFolding<'a> {
     type Action = Dir;
     type Cost = u32;
 
@@ -187,8 +215,8 @@ impl CostructSolution for ProteinFolding {
     }
 
     fn result(&self, board: &Self::State, dir: &Self::Action) -> (Self::State, Self::Cost) {
-        let mut new_board = Board {
-            last: board.clone().into(),
+        let mut new_board: Board<'a> = Board {
+            last: (*board).into(),
             depth: board.depth + 1,
             has_turned: board.has_turned,
             pos: board.pos.clone_move(*dir),
@@ -197,25 +225,32 @@ impl CostructSolution for ProteinFolding {
         if *dir == Dir::Left || *dir == Dir::Right {
             new_board.has_turned = true;
         }
-        let cost = board.cost_f(self, &new_board.pos);
+
+        let cost = (self.cost_f)(self, board, &new_board.pos);
         if self.aminoacids[board.depth + 1] == AminoAcid::H {
             if cost != 3 {
                 new_board.total_contacs += 1;
             }
         }
 
-        (Rc::new(new_board), cost)
+        (self.arena.alloc(new_board), cost)
     }
 }
 
-impl SuitableState for ProteinFolding {
+impl SuitableState for ProteinFolding<'_> {
     fn is_suitable(&self, state: &Self::State) -> bool {
         self.aminoacids.len() - 1 == state.depth
     }
 }
 
-impl Utility for ProteinFolding {
+impl Utility for ProteinFolding<'_> {
     fn heuristic(&self, state: &Self::State) -> Self::Cost {
-        self.h_numer - state.total_contacs
+        (self.heuristic)(self, state)
+    }
+}
+
+impl<'a> InitState for ProteinFolding<'a> {
+    fn init_state(&self) -> Self::State {
+        self.arena.alloc(Default::default())
     }
 }

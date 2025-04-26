@@ -2,18 +2,20 @@ use std::cell::RefCell;
 use std::clone::Clone;
 use std::fmt::Debug;
 use std::hash::Hash;
-use std::rc::Rc;
+use std::ops::Add;
 use std::vec::Vec;
+
+use bumpalo::Bump;
 
 use crate::problem::*;
 
 #[derive(PartialEq, Eq)]
-pub struct Node<P>
+pub struct Node<'a, P>
 where
     P: Utility,
 {
     state: P::State,
-    parent: Option<Rc<Node<P>>>,
+    parent: Option<&'a Self>,
     action: Option<P::Action>,
     total_cost: P::Cost,
     heuristic: P::Cost,
@@ -21,12 +23,22 @@ where
     dead: RefCell<bool>,
 }
 
-impl<P> Node<P>
+impl<'a, P> Node<'a, P>
 where
-    P: Utility<Action: Clone>,
+    P: Utility<Action: Clone, Cost: Add<Output = P::Cost>>,
 {
+    pub fn in_arena(
+        parent: Option<&'a Node<'a, P>>,
+        problem: &P,
+        state: P::State,
+        action: Option<P::Action>,
+        cost: P::Cost,
+        arena: &'a Bump,
+    ) -> &'a Self {
+        arena.alloc(Self::new(parent, problem, state, action, cost))
+    }
     pub fn new(
-        parent: Option<Rc<Node<P>>>,
+        parent: Option<&'a Node<'a, P>>,
         problem: &P,
         state: P::State,
         action: Option<P::Action>,
@@ -57,7 +69,7 @@ where
 
         if self.action.is_some() {
             result.push(self.action.clone().unwrap());
-            let mut current_node: Option<Rc<Node<P>>> = self.parent.clone();
+            let mut current_node = self.parent;
 
             while let Some(node) = current_node {
                 if let Some(action) = &node.action {
@@ -99,9 +111,9 @@ where
     }
 }
 
-impl<P> Debug for Node<P>
+impl<P> Debug for Node<'_, P>
 where
-    P: Utility<State: Debug, Action: Clone, Cost: Debug>,
+    P: Utility<State: Debug, Action: Clone, Cost: Debug + Add<Output = P::Cost>>,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
@@ -112,17 +124,10 @@ where
             self.heuristic,
             self.get_f_cost()
         )
-
-        /* f.debug_struct("Node")
-        .field("state", &self.state)
-        .field("total_cost", &self.total_cost)
-        .field("heuristic", &self.heuristic)
-        .field("depth", &self.depth)
-        .finish() */
     }
 }
 
-impl<P> std::hash::Hash for Node<P>
+impl<P> std::hash::Hash for Node<'_, P>
 where
     P: Utility<State: Hash, Cost: Hash>,
 {
