@@ -2,12 +2,11 @@ mod formulation;
 
 use std::{
     collections::{HashMap, HashSet},
-    str::FromStr,
     time::Duration,
 };
 
 use agent::{
-    problem::{self, InitState},
+    problem::InitState,
     statexplorer::{
         frontier::{
             AStarBackend, BestFirstBackend, DequeBackend, FrontierBackend, MinCostBackend,
