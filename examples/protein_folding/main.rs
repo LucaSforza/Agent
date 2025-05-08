@@ -1,4 +1,5 @@
 mod formulation;
+mod iterative_impr;
 
 use std::{
     collections::{HashMap, HashSet},
@@ -6,7 +7,11 @@ use std::{
 };
 
 use agent::{
-    problem::InitState,
+    improve::{
+        algorithms::{HillClimbing, LocalBeam},
+        resolver,
+    },
+    problem::{InitState, Utility},
     statexplorer::{
         frontier::{
             AStarBackend, BestFirstBackend, DequeBackend, FrontierBackend, MinCostBackend,
@@ -44,9 +49,6 @@ fn run_example_get_time<'a, B: FrontierBackend<'a, ProteinFolding<'a>>>(
 
 type MinCost<'a> = MinCostBackend<'a, ProteinFolding<'a>>;
 type AStar<'a> = AStarBackend<'a, ProteinFolding<'a>>;
-type BestFirst<'a> = BestFirstBackend<'a, ProteinFolding<'a>>;
-type BFS<'a> = DequeBackend<'a, ProteinFolding<'a>>;
-type DFS<'a> = StackBackend<'a, ProteinFolding<'a>>;
 
 fn print_solution(protein: &Vec<AminoAcid>, solution: Vec<Dir>) -> i32 {
     // Genera le posizioni originali degli aminoacidi
@@ -236,6 +238,25 @@ enum Commands {
         #[clap(short, long)]
         iters: usize,
     },
+    Iterative,
+}
+
+fn iterative() {
+    use iterative_impr::Dir::*;
+
+    let problem =
+        iterative_impr::ProteinFolding::new(vec![P, H, H, H, P, H, H, P, H, P, H, P, H, P, H]);
+
+    // let protein = iterative_impr::Protein::from_parts(vec![Forward, Right, Right, Right, Right]);
+
+    // println!("{}", problem.heuristic(&protein));
+
+    use agent::improve::algorithms::SteepestDescend;
+    use agent::improve::resolver::Resolver;
+
+    let mut resolver = Resolver::new(LocalBeam::from_parts(rand::rng(), 10, Some(1000)));
+    let result = resolver.resolve(&problem);
+    println!("{:?}", result);
 }
 
 /*
@@ -246,13 +267,13 @@ Example values:
     HHPHPHHHPPPPHHPHPHPPHPHPH da controllare
     HHPHPPHHHPPPPHHPHPHPPHPHPHH
 */
-
 fn main() {
     let args = Commands::parse();
 
     match args {
         Commands::RunProtein { aminoacids } => run_all(aminoacids.0),
         Commands::RandTest { len, iters } => random_test(len, iters),
+        Commands::Iterative => iterative(),
     }
 
     // let mut rng = rand::rng();

@@ -2,7 +2,7 @@ use agent::problem::{CostructSolution, InitState, Problem, SuitableState, Utilit
 
 use bumpalo::Bump;
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum AminoAcid {
     H,
     P,
@@ -16,14 +16,23 @@ pub enum Dir {
     Right,
 }
 
-#[derive(Clone, Copy, PartialEq, Default)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct Pos {
-    x: isize,
-    y: isize,
+    x: i32,
+    y: i32,
+}
+
+impl From<(i32, i32)> for Pos {
+    fn from(value: (i32, i32)) -> Self {
+        Pos {
+            x: value.0,
+            y: value.1,
+        }
+    }
 }
 
 impl Pos {
-    fn move_dir(&mut self, dir: Dir) {
+    pub fn move_dir(&mut self, dir: Dir) {
         match dir {
             Dir::Up => self.x -= 1,
             Dir::Down => self.x += 1,
@@ -32,7 +41,7 @@ impl Pos {
         }
     }
 
-    fn clone_move(&self, dir: Dir) -> Self {
+    pub fn clone_move(&self, dir: Dir) -> Self {
         let mut new_pos = self.clone();
         new_pos.move_dir(dir);
         return new_pos;

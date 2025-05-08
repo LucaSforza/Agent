@@ -104,14 +104,6 @@ where
         let mut result = self.algo.attempt(problem);
         for _ in 1..max_restarts {
             let new_result = self.algo.attempt(problem);
-            if new_result.h <= P::Cost::default() {
-                // TODO: check if it is a goal state
-                result.state = new_result.state;
-                result.h = new_result.h;
-                result.iterations += new_result.iterations;
-                let result = ResolverResult::from_inner(start, result);
-                return result;
-            }
             if new_result.h < result.h {
                 result.state = new_result.state;
                 result.h = new_result.h;

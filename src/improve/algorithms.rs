@@ -205,9 +205,6 @@ where
 
         for t in 0.. {
             let velocity = (self.cooling)(t);
-            if curr_h <= Default::default() {
-                return AttemptResult::new(curr_state, curr_h, t + 1);
-            }
             if velocity <= self.precision {
                 return AttemptResult::new(curr_state, curr_h, t + 1);
             }
@@ -300,11 +297,7 @@ where
                 for a in problem.perturbations(s) {
                     let next_s = problem.perturb(s, &a);
                     let next_h = problem.heuristic(&next_s);
-                    if next_h <= Default::default() {
-                        return AttemptResult::new(next_s, next_h, iter);
-                    } else {
-                        succ.push(Node(Reverse(next_h), next_s));
-                    }
+                    succ.push(Node(Reverse(next_h), next_s));
                 }
             }
 
@@ -361,9 +354,6 @@ where
         for _ in 0..self.k {
             let state = problem.random_state(&mut self.rng);
             let h = problem.heuristic(&state);
-            if h <= Default::default() {
-                return AttemptResult::new(state, h, 0);
-            }
             current_pop.push(state);
             current_weights.push(h.into().inv()); // TODO: aggiungi reverse
         }
