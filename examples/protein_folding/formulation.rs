@@ -147,7 +147,10 @@ fn default_cost_f<'a>(problem: &ProteinFolding, state: &'a Board<'a>, new_pos: &
 
     while let Some(l) = last {
         if problem.aminoacids[l.depth] == AminoAcid::H {
-            if l.pos.x.abs_diff(new_pos.x) + l.pos.y.abs_diff(new_pos.y) == 1 {
+            let dx = (l.pos.x - new_pos.x) as f64;
+            let dy = (l.pos.y - new_pos.y) as f64;
+            let distance = (dx * dx + dy * dy).sqrt();
+            if (distance - 1.0).abs() < f64::EPSILON {
                 attacts += 1;
             }
         }
