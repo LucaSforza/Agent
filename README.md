@@ -65,3 +65,16 @@ cargo t --release
 
 vedere Markdown [a_3_1.md](a_3_1.md) e [a_3_2.md](a_3_2.md) per la soluzione degli esercizi.
 
+## Testing
+
+```bash
+cargo test --release          # 60 test, tutti veloci
+cargo test test_csp_improve   # algoritmi improve su CSP
+cargo test test_vacuum_bfs    # search su vacuum
+```
+
+I test sono in `tests/`. Ogni file definisce il problema inline. I test nuovi coprono:
+- Tutti i 5 algoritmi improve (Bits problem, TinyCSP)
+- Casi limite search (goal immediato, zero azioni, grafo ciclico, multi-path)
+- Confronto restart vs singolo tentativo
+

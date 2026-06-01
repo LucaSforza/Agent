@@ -20,6 +20,10 @@ cargo run --example csp --release
 Run single test:
 ```bash
 cargo test test_vacuum_bfs -- --nocapture
+cargo test test_steepest_descend -- --nocapture  # improve algorithm
+cargo test test_csp_hill_climbing -- --nocapture
+cargo test test_count_bfs -- --nocapture          # statexplorer tiny problem
+cargo test test_already_at_goal_bfs -- --nocapture
 ```
 
 ## Architecture
@@ -80,7 +84,17 @@ src/
   - Multi-step lookahead uses recursive `min_k_steps()` with push/pop on `Vec<(Pos, bool)>` chain (no arena needed for heuristic).
 - **csp** — Constraint satisfaction with steepest descent.
 
-### Tests
+### Tests (60 total, all fast)
 
+**Search (`statexplorer/`):**
 - `test_simple_vacuum` — 2-position vacuum, BFS/DFS with exact action sequences
-- `test_vacuum` — 32x32 grid vacuum, all search algorithms, iterative deepening, Esposito layout
+- `test_vacuum` — 32x32 grid, all search algorithms, iterative deepening, Esposito layout
+- `test_nqueen_statexplorer` — CountTo problem, 5 backends (BFS/DFS/UCS/BestFirst/A*), depth limits, iterative search
+- `test_statexplorer_edge_cases` — Already-at-goal, no-actions, single-state, cyclic graph, multi-path (tests `enqueue_or_replace`)
+
+**Improve algorithms (`improve/`):**
+- `test_nqueen_improve` — Bits problem (3-bit flip), all 5 algorithms + restart comparison
+- `test_csp_improve` — TinyCSP (3 vars, domain 1..2), all 5 algorithms + restart
+- `test_improve_edge_cases` — Trivial optimal, flat landscape, single perturbation, k=1 beam
+
+**Test pattern**: Problems defined inline in each `tests/*.rs` file. No library code added for testing. Use seeded RNG (`StdRng::seed_from_u64`) for reproducibility.
