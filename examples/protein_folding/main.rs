@@ -16,7 +16,7 @@ use agent::{
     },
 };
 use bumpalo::Bump;
-use formulation::{AminoAcid, Dir, ProteinFolding};
+use formulation::{AminoAcid, Dir, h_lookahead2, h_lookahead3, old_heuristic, ProteinFolding};
 use rand::seq::SliceRandom;
 
 fn run_example<'a, B: FrontierBackend<'a, ProteinFolding<'a>> + std::fmt::Debug>(
@@ -148,17 +148,46 @@ fn run_all(protein: Vec<AminoAcid>) {
     }
     {
         let arena_problem = Bump::new();
-        let problem = ProteinFolding::new(protein, &arena_problem);
-        println!("AStar:");
+        let problem = ProteinFolding::with_heuristic(protein.clone(), &arena_problem, old_heuristic);
+        println!("AStar (old heuristic):");
         let arena_explorer = Bump::new();
         run_example::<AStar>(&arena_explorer, &problem);
     }
-    // println!("BestFirst:");
-    // run_example::<BestFirst>(protein);
-    // println!("DFS:");
-    // run_example::<DFS>(protein);
-    // println!("BFS:");
-    // run_example::<BFS>(protein);
+    {
+        let arena_problem = Bump::new();
+        let problem = ProteinFolding::new(protein.clone(), &arena_problem);
+        println!("AStar (1-step lookahead):");
+        let arena_explorer = Bump::new();
+        run_example::<AStar>(&arena_explorer, &problem);
+    }
+    {
+        let arena_problem = Bump::new();
+        let problem = ProteinFolding::with_heuristic(protein.clone(), &arena_problem, h_lookahead2);
+        println!("AStar (2-step lookahead):");
+        let arena_explorer = Bump::new();
+        run_example::<AStar>(&arena_explorer, &problem);
+    }
+    {
+        let arena_problem = Bump::new();
+        let problem = ProteinFolding::with_heuristic(protein.clone(), &arena_problem, h_lookahead3);
+        println!("AStar (3-step lookahead):");
+        let arena_explorer = Bump::new();
+        run_example::<AStar>(&arena_explorer, &problem);
+    }
+    {
+        let arena_problem = Bump::new();
+        let problem = ProteinFolding::new(protein.clone(), &arena_problem);
+        println!("BestFirst:");
+        let arena_explorer = Bump::new();
+        run_example::<BestFirst>(&arena_explorer, &problem);
+    }
+    {
+        let arena_problem = Bump::new();
+        let problem = ProteinFolding::new(protein.clone(), &arena_problem);
+        println!("DFS:");
+        let arena_explorer = Bump::new();
+        run_example::<DFS>(&arena_explorer, &problem);
+    }
 }
 
 use AminoAcid::*;

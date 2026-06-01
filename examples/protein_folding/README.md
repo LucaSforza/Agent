@@ -272,3 +272,35 @@ protein lenght: 16
 protein lenght: 17
  Max ratio: 0.11764705882352941
 ```
+
+## Confronto Euristiche
+
+Successivamente ho aggiunto varie euristiche ammissibili basate su multi-step lookahead.
+I test sono sulla proteina `HHPHPHHHPPPPHHPHPHPPHPHPH` (25 aminoacidi, 13 H).
+
+| Euristica | Ammissibile | Energia | Iterazioni | % MinCost | Tempo |
+|-----------|:-----------:|:-------:|-----------:|:---------:|:-----:|
+| MinCost (UCS) | si | -11 | 5,417,047 | 100% | 5.86s |
+| old (`h_total - contacts`) | no | -10 | 71,267 | 1.3% | 23ms |
+| 1-step lookahead | si | -11 | 3,532,485 | 65.2% | 3.63s |
+| **2-step lookahead** | si | -11 | 1,978,043 | **36.5%** | **3.34s** |
+| **3-step lookahead** | si | -11 | 1,051,881 | **19.4%** | 3.73s |
+| BestFirst (greedy) | no | -1 | 287 | — | 189µs |
+| DFS | no | 0 | 25 | — | 19µs |
+
+Tutte le euristiche ammissibili trovano energia ottima -11. La vecchia euristica converge 100x piu veloce ma da energia subottima -10.
+
+Euristica vecchia (`h_total - total_contacts`) non e ammissibile: conta H senza contatti come costo futuro, ma H senza contatti possono riceverli da posizionamenti successivi a costo zero. Vedi `formulation.rs:258`.
+
+### Multi-step lookahead
+
+Le euristiche ammissibili calcolano il costo minimo esatto per i prossimi k passi (cercando tutte le posizioni adiacenti legali), poi usano un bound rilassato per i rimanenti.
+
+Per k=3 si usa `min_k_steps()` ricorsivo in `formulation.rs:253`:
+- Costruisce `Vec<(Pos, bool)>` della catena esistente
+- Prova ricorsivamente fino a 4^k combinazioni di posizioni (push/pop, nessun clone)
+- Conta contatti H con distanza Manhattan (|dx|+|dy|==1)
+- Per ogni H: costo = 3 - min(3, contatti) (P costa 0)
+- Prende minimo su tutti i percorsi di k passi
+
+Dopo i k passi: bound rilassato basato sul conteggio H. Ogni H rimanente costa almeno max(0, 3 - H_già_piazzati). Il bound converge a 0 dopo 3 H.
