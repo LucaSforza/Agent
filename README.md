@@ -54,6 +54,13 @@ vedere [a_4_1.md](a_4_1.md).
 Nella cartella esempi è presente come esempio il problema del Protein Folding.
 Per maggiori informazioni cliccare [qui](examples/protein_folding/README.md).
 
+Per trovare una soluzione ottima senza eseguire tutti gli algoritmi dimostrativi,
+usa A* con la euristica ammissibile a tre passi:
+
+```bash
+cargo run --example protein_folding --release -- solve HHPHPPHHHPPPPHH
+```
+
 ## Esplorazione di Spazi degli stati
 
 Per eseguire gli esempi:
@@ -77,4 +84,3 @@ I test sono in `tests/`. Ogni file definisce il problema inline. I test nuovi co
 - Tutti i 5 algoritmi improve (Bits problem, TinyCSP)
 - Casi limite search (goal immediato, zero azioni, grafo ciclico, multi-path)
 - Confronto restart vs singolo tentativo
-
