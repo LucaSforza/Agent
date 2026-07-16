@@ -133,7 +133,12 @@ impl<'a> Board<'a> {
 
 fn count_contacts_chain(chain: &[(Pos, bool)], pos: &Pos) -> u32 {
     let mut c = 0u32;
-    for (p, is_h) in chain {
+    for (index, (p, is_h)) in chain.iter().enumerate() {
+        // `pos` is the next residue, so the chain tip is its covalent parent
+        // and must not be counted as a non-bonded H-H contact.
+        if index + 1 == chain.len() {
+            continue;
+        }
         if *is_h && (p.x - pos.x).abs() + (p.y - pos.y).abs() == 1 {
             c += 1;
         }
@@ -223,8 +228,7 @@ pub fn h_lookahead2<'a>(problem: &ProteinFolding, state: &'a Board<'a>) -> u32 {
             if p2 == p1 { continue; }
 
             if step2_h {
-                let c2 = count_contacts_chain(&chain, &p2)
-                    + if step1_h && (p1.x - p2.x).abs() + (p1.y - p2.y).abs() == 1 { 1 } else { 0 };
+                let c2 = count_contacts_chain(&chain, &p2);
                 min_cost2 = min_cost2.min(3u32.saturating_sub(c2.min(3)));
             } else {
                 min_cost2 = 0;
@@ -322,10 +326,7 @@ fn default_cost_f<'a>(problem: &ProteinFolding, state: &'a Board<'a>, new_pos: &
 
     while let Some(l) = last {
         if problem.aminoacids[l.depth] == AminoAcid::H {
-            let dx = (l.pos.x - new_pos.x) as f64;
-            let dy = (l.pos.y - new_pos.y) as f64;
-            let distance = (dx * dx + dy * dy).sqrt();
-            if (distance - 1.0).abs() < f64::EPSILON {
+            if (l.pos.x - new_pos.x).abs() + (l.pos.y - new_pos.y).abs() == 1 {
                 attacts += 1;
             }
         }
@@ -385,29 +386,24 @@ impl<'a> CostructSolution for ProteinFolding<'a> {
     type Cost = u32;
 
     fn executable_actions(&self, state: &Self::State) -> impl Iterator<Item = Self::Action> {
-        if state.depth == 0 {
-            // non importa dove vado la prima volta
-            return vec![Dir::Up].into_iter();
-        }
-
-        let mut actions;
-        if state.has_turned {
-            actions = Vec::with_capacity(3);
-            for dir in vec![Dir::Left, Dir::Down, Dir::Up, Dir::Right] {
-                if state.suitable(&state.pos.clone_move(dir)) {
-                    actions.push(dir);
-                }
-            }
+        let directions = if state.depth == 0 {
+            // The first move fixes rotational symmetry.
+            [Some(Dir::Up), None, None, None]
+        } else if state.has_turned {
+            [
+                Some(Dir::Left),
+                Some(Dir::Down),
+                Some(Dir::Up),
+                Some(Dir::Right),
+            ]
         } else {
-            // come prima svolta considerare solo la destra
-            actions = Vec::with_capacity(2);
-            for dir in vec![Dir::Down, Dir::Up, Dir::Right] {
-                if state.suitable(&state.pos.clone_move(dir)) {
-                    actions.push(dir);
-                }
-            }
-        }
-        actions.into_iter()
+            // Before the first turn, keep only one mirrored turn direction.
+            [Some(Dir::Down), Some(Dir::Up), Some(Dir::Right), None]
+        };
+
+        directions.into_iter().filter_map(move |dir| {
+            dir.filter(|dir| state.suitable(&state.pos.clone_move(*dir)))
+        })
     }
 
     fn result(&self, board: &Self::State, dir: &Self::Action) -> (Self::State, Self::Cost) {

@@ -145,6 +145,14 @@ where
     P: Utility,
 {
     fn cost(node: &Node<P>) -> P::Cost;
+
+    /// Secondary ordering for nodes with the same primary cost.
+    ///
+    /// The default preserves the previous behavior. A* overrides it to favor
+    /// nodes closer to a goal when their f-cost is tied.
+    fn tie_break(_node: &Node<P>) -> P::Cost {
+        P::Cost::default()
+    }
 }
 
 pub struct AStarPolicy {}
@@ -155,6 +163,10 @@ where
 {
     fn cost(node: &Node<P>) -> P::Cost {
         node.get_f_cost()
+    }
+
+    fn tie_break(node: &Node<P>) -> P::Cost {
+        node.get_h_cost()
     }
 }
 
@@ -180,7 +192,7 @@ where
     }
 }
 
-pub struct NodeAndCost<'a, P>(&'a Node<'a, P>, Reverse<P::Cost>)
+pub struct NodeAndCost<'a, P>(&'a Node<'a, P>, Reverse<(P::Cost, P::Cost)>)
 where
     P: Utility;
 
@@ -188,8 +200,8 @@ impl<'a, P> NodeAndCost<'a, P>
 where
     P: Utility,
 {
-    pub fn new(node: &'a Node<P>, cost: P::Cost) -> Self {
-        Self(node, Reverse(cost))
+    pub fn new(node: &'a Node<P>, cost: P::Cost, tie_break: P::Cost) -> Self {
+        Self(node, Reverse((cost, tie_break)))
     }
 }
 
@@ -260,7 +272,8 @@ where
 {
     fn enqueue(&mut self, item: &'a Node<'a, P>) {
         let cost = Policy::cost(item);
-        self.collection.push(NodeAndCost::new(item, cost));
+        let tie_break = Policy::tie_break(item);
+        self.collection.push(NodeAndCost::new(item, cost, tie_break));
     }
 
     fn dequeue(&mut self) -> Option<&'a Node<'a, P>> {
