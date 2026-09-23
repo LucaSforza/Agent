@@ -20,3 +20,16 @@ UV_CACHE_DIR=/tmp/protein-uv-cache MPLCONFIGDIR=/tmp/protein-mpl \
 `benchmarks/results.json`; `plot.py` crea `benchmarks/performance.png` e
 `benchmarks/results.md`. Il tempo è `SearchResult.total_time`: esclude
 compilazione, avvio del processo e calcolo dell'energia per l'output.
+
+## Risultati misurati
+
+[Grafico](../benchmarks/performance.png) · [tabella](../benchmarks/results.md) ·
+[CSV grezzo](../benchmarks/results.csv).
+
+Sulla sequenza da 20 residui, il commit `081ef55f` impiega 31,688 ms mediani:
+3,18 volte più veloce di `5842cd21` e 1,16 volte di `60443c0b`.
+`60443c0b` e `081ef55f` estraggono entrambi 13.154 nodi; qui il guadagno
+aggiuntivo viene dal lavoro svolto per nodo. Tutte le revisioni producono
+energia -7 su questa sequenza. Le tre sequenze e le sette misure per caso
+sono nel CSV; i tempi molto brevi della sequenza da 9 residui sono più
+suscettibili a rumore di sistema.

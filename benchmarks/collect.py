@@ -71,7 +71,11 @@ def main():
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open("w", newline="") as file:
-        writer = csv.DictWriter(file, fieldnames=("revision", "sequence", "run", "duration_ns", "iterations", "energy"))
+        writer = csv.DictWriter(
+            file,
+            fieldnames=("revision", "sequence", "run", "duration_ns", "iterations", "energy"),
+            lineterminator="\n",
+        )
         writer.writeheader()
         writer.writerows(rows)
 

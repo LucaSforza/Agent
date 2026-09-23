@@ -1,0 +1,18 @@
+{
+  "revisions": [
+    "5842cd21f0ff8db55fdea543826f5c78e30d3fdc",
+    "60443c0bec1cc607366c679179f305928ed93111",
+    "081ef55f93f4efea7293f4d062c89712eeef7eab"
+  ],
+  "sequences": [
+    "PHHPHPPHP",
+    "HHPHPPHHHPPPPHH",
+    "HHPHPHHHPPPPHHPHPHPP"
+  ],
+  "repetitions": 7,
+  "machine": "Linux-7.2.5-200.fc44.x86_64-x86_64-with-glibc2.43",
+  "processor": "",
+  "rustc": "rustc 1.92.0 (ded5c06cf 2025-12-08)",
+  "cargo": "cargo 1.92.0 (344c4567c 2025-10-21)",
+  "measurement": "SearchResult.total_time; release build; same harness; median across runs"
+}
