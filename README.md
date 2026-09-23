@@ -55,7 +55,7 @@ Nella cartella esempi è presente come esempio il problema del Protein Folding.
 Per maggiori informazioni cliccare [qui](examples/protein_folding/README.md).
 
 Per trovare una soluzione ottima senza eseguire tutti gli algoritmi dimostrativi,
-usa A* con la euristica ammissibile a tre passi:
+usa A* con l'euristica ammissibile a tre passi e il limite di parità:
 
 ```bash
 cargo run --example protein_folding --release -- solve HHPHPPHHHPPPPHH

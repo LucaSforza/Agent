@@ -33,3 +33,26 @@ aggiuntivo viene dal lavoro svolto per nodo. Tutte le revisioni producono
 energia -7 su questa sequenza. Le tre sequenze e le sette misure per caso
 sono nel CSV; i tempi molto brevi della sequenza da 9 residui sono più
 suscettibili a rumore di sistema.
+
+## Confronto delle euristiche
+
+Il benchmark euristico misura sul codice finale quattro varianti già presenti
+nei commit `5842cd21`/`60443c0b` (`legacy`, `one_step`, `lookahead2`,
+`lookahead3`) e le nuove `h_lookahead3_parity` e `h_lookahead4_parity`. Tutte ricevono gli stessi input
+e vengono misurate con lo stesso harness release. Il grafico mostra le mediane
+di tempo e iterazioni, più l'energia ottenuta; il gruppo blu indica le varianti
+storiche e il verde le nuove. Energia più bassa significa più contatti H. Una
+euristica storica con energia maggiore della migliore per quella sequenza viene
+segnalata come subottima: velocità e qualità della soluzione vanno interpretate
+insieme.
+
+```bash
+python3 benchmarks/collect_heuristics.py --repetitions 7
+UV_CACHE_DIR=/tmp/protein-uv-cache MPLCONFIGDIR=/tmp/protein-mpl \
+  uv run --script benchmarks/plot_heuristics.py
+```
+
+Il CSV `benchmarks/heuristics.csv` conserva ogni esecuzione; i metadati di
+macchina e compilatore sono in `benchmarks/heuristics.json`. Il grafico e la
+tabella vengono salvati in `benchmarks/heuristics.png` e
+`benchmarks/heuristics.md`.

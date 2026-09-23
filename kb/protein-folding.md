@@ -13,10 +13,17 @@ equivale a massimizzare i contatti. L'esempio permette confronto fra più
 algoritmi; `solve` usa A* con lookahead di tre passi.
 
 L'euristica a tre passi prova le mosse legali dei prossimi tre residui e somma
-un limite inferiore rilassato per quelli restanti. Il benchmark usa sempre la
-stessa euristica e la stessa sequenza, così le revisioni differiscono soltanto
-nel codice del progetto. La revisione `5842cd2` precede una correzione del
-conteggio dei contatti nell'euristica; il confronto delle prestazioni va letto
-insieme all'energia ottenuta.
+un limite inferiore rilassato per quelli restanti. Le nuove euristiche di
+parità rafforzano quel limite: nel reticolo quadrato solo residui di parità
+opposta nella catena possono entrare in contatto, e ogni H già collocato ha
+un numero limitato di lati liberi. Si usa il massimo fra limite globale e
+lookahead, evitando di sommarli due volte. Le varianti a tre e quattro passi
+sono ammissibili; `solve` usa quella a tre passi, scelta sul tempo misurato.
+
+Il primo benchmark storico usa sempre la stessa selezione di euristica e la
+stessa sequenza, così le revisioni differiscono soltanto nel codice del
+progetto. La revisione `5842cd2` precede una correzione del conteggio dei
+contatti nell'euristica; il confronto delle prestazioni va letto insieme
+all'energia ottenuta.
 
 Dettagli storici e output dimostrativi: `examples/protein_folding/README.md`.

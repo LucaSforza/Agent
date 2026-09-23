@@ -328,6 +328,17 @@ fn scan_chain_for_move(chain: &[(Pos, bool)], pos: &Pos, count_contacts: bool) -
     (false, contacts)
 }
 
+fn exact_steps<'a>(problem: &ProteinFolding, state: &'a Board<'a>, lookahead: usize) -> u32 {
+    let mut chain = Vec::with_capacity(state.depth + 1 + lookahead);
+    let mut curr = Some(state);
+    while let Some(board) = curr {
+        chain.push((board.pos, problem.aminoacids[board.depth] == AminoAcid::H));
+        curr = board.last;
+    }
+    chain.reverse();
+    min_k_steps(&mut chain, problem, state.depth + 1, lookahead)
+}
+
 // 3-step lookahead + relaxed count bound
 pub fn h_lookahead3<'a>(problem: &ProteinFolding, state: &'a Board<'a>) -> u32 {
     let n = problem.aminoacids.len();
@@ -336,18 +347,11 @@ pub fn h_lookahead3<'a>(problem: &ProteinFolding, state: &'a Board<'a>) -> u32 {
         return 0;
     }
 
-    let mut chain = Vec::with_capacity(state.depth + 1 + 3);
-    let mut curr = Some(state);
-    while let Some(board) = curr {
-        chain.push((board.pos, problem.aminoacids[board.depth] == AminoAcid::H));
-        curr = board.last;
-    }
-    chain.reverse();
-    let k = 3;
-    let mut result = min_k_steps(&mut chain, problem, d + 1, k);
+    let mut result = exact_steps(problem, state, 3);
+    let placed_h = problem.h_prefix[d + 1];
+    let mut h_count = placed_h[0] + placed_h[1];
 
-    let end = n.min(d + 1 + k);
-    let mut h_count = chain.iter().filter(|(_, h)| *h).count() as u32;
+    let end = n.min(d + 4);
     for i in (d + 1)..end {
         if problem.aminoacids[i] == AminoAcid::H {
             h_count += 1;
@@ -362,6 +366,76 @@ pub fn h_lookahead3<'a>(problem: &ProteinFolding, state: &'a Board<'a>) -> u32 {
         }
     }
     result
+}
+
+// The square lattice is bipartite: residue i can touch only residues of the
+// opposite index parity. The covalent predecessor never counts as a contact.
+// This suffix bound dominates the old H-count bound and costs one lookup.
+pub fn h_lookahead3_parity<'a>(problem: &ProteinFolding, state: &'a Board<'a>) -> u32 {
+    h_lookahead_parity(problem, state, 3)
+}
+
+pub fn h_lookahead4_parity<'a>(problem: &ProteinFolding, state: &'a Board<'a>) -> u32 {
+    h_lookahead_parity(problem, state, 4)
+}
+
+fn h_lookahead_parity<'a>(problem: &ProteinFolding, state: &'a Board<'a>, lookahead: usize) -> u32 {
+    if state.depth + 1 >= problem.aminoacids.len() {
+        return 0;
+    }
+    let placed_h = problem.h_prefix[state.depth + 1];
+    let suffix_start = (state.depth + 1 + lookahead).min(problem.aminoacids.len());
+
+    // Every future H-H contact uses one even and one odd residue. Previously
+    // placed H can offer at most two non-bonded sides, or three at chain ends.
+    let mut past_capacity = [2 * placed_h[0], 2 * placed_h[1]];
+    if problem.aminoacids[0] == AminoAcid::H {
+        past_capacity[0] += 1;
+    }
+    if state.depth > 0 && problem.aminoacids[state.depth] == AminoAcid::H {
+        past_capacity[state.depth % 2] += 1;
+    }
+    let future_h = [
+        problem.h_by_parity[0] - placed_h[0],
+        problem.h_by_parity[1] - placed_h[1],
+    ];
+    let future_base_cost = 3 * (future_h[0] + future_h[1]);
+    let max_future_contacts = (3 * future_h[0] + past_capacity[0])
+        .min(3 * future_h[1] + past_capacity[1])
+        .min(future_base_cost);
+    let capacity_bound = future_base_cost - max_future_contacts;
+
+    let exact_h = problem.h_prefix[suffix_start][0] + problem.h_prefix[suffix_start][1]
+        - placed_h[0]
+        - placed_h[1];
+    let suffix_bound = problem.parity_tail_bound[suffix_start];
+    // Exact lookahead cannot exceed three per H. Skip it when the global
+    // capacity bound already dominates even that optimistic upper limit.
+    if capacity_bound >= 3 * exact_h + suffix_bound {
+        return capacity_bound;
+    }
+    let lookahead_bound = exact_steps(problem, state, lookahead) + suffix_bound;
+    lookahead_bound.max(capacity_bound)
+}
+
+fn parity_tail_bound(aminoacids: &[AminoAcid]) -> Vec<u32> {
+    let mut bounds = vec![0; aminoacids.len() + 1];
+    let mut preceding_h = [0u32; 2];
+    for (index, acid) in aminoacids.iter().enumerate() {
+        if *acid == AminoAcid::H {
+            if index > 0 {
+                let opposite_h = preceding_h[1 - index % 2];
+                // If H, the parent is included in opposite_h but bonded.
+                let bonded_parent = u32::from(aminoacids[index - 1] == AminoAcid::H);
+                bounds[index] = 3u32.saturating_sub(opposite_h - bonded_parent);
+            }
+            preceding_h[index % 2] += 1;
+        }
+    }
+    for index in (0..aminoacids.len()).rev() {
+        bounds[index] += bounds[index + 1];
+    }
+    bounds
 }
 
 fn default_heuristic<'a>(problem: &ProteinFolding, state: &'a Board<'a>) -> u32 {
@@ -396,6 +470,9 @@ fn default_cost_f<'a>(problem: &ProteinFolding, state: &'a Board<'a>, new_pos: &
 pub struct ProteinFolding<'a> {
     pub aminoacids: Vec<AminoAcid>, // len is n
     h_number: u32,
+    h_by_parity: [u32; 2],
+    h_prefix: Vec<[u32; 2]>,
+    parity_tail_bound: Vec<u32>,
     heuristic: fn(&ProteinFolding, &'a Board<'a>) -> u32,
     cost_f: fn(&ProteinFolding, &'a Board<'a>, &Pos) -> u32,
     arena: &'a Bump,
@@ -403,17 +480,7 @@ pub struct ProteinFolding<'a> {
 
 impl<'a> ProteinFolding<'a> {
     pub fn new(aminoacid: Vec<AminoAcid>, arena: &'a Bump) -> Self {
-        let h_number = aminoacid
-            .iter()
-            .map(|x| if *x == AminoAcid::H { 1 } else { 0 })
-            .sum();
-        Self {
-            aminoacids: aminoacid,
-            h_number: h_number,
-            heuristic: default_heuristic,
-            cost_f: default_cost_f,
-            arena: arena,
-        }
+        Self::with_heuristic(aminoacid, arena, default_heuristic)
     }
 
     pub fn with_heuristic(
@@ -421,13 +488,22 @@ impl<'a> ProteinFolding<'a> {
         arena: &'a Bump,
         heuristic: fn(&ProteinFolding, &'a Board<'a>) -> u32,
     ) -> Self {
-        let h_number = aminoacid
-            .iter()
-            .map(|x| if *x == AminoAcid::H { 1 } else { 0 })
-            .sum();
+        let mut h_prefix = Vec::with_capacity(aminoacid.len() + 1);
+        h_prefix.push([0; 2]);
+        for (index, acid) in aminoacid.iter().enumerate() {
+            let mut counts = *h_prefix.last().unwrap();
+            if *acid == AminoAcid::H {
+                counts[index % 2] += 1;
+            }
+            h_prefix.push(counts);
+        }
+        let h_by_parity = *h_prefix.last().unwrap();
         Self {
+            parity_tail_bound: parity_tail_bound(&aminoacid),
             aminoacids: aminoacid,
-            h_number: h_number,
+            h_number: h_by_parity[0] + h_by_parity[1],
+            h_by_parity,
+            h_prefix,
             heuristic: heuristic,
             cost_f: default_cost_f,
             arena: arena,
