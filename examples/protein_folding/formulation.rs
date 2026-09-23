@@ -131,23 +131,9 @@ impl<'a> Board<'a> {
     }
 }
 
-fn count_contacts_chain(chain: &[(Pos, bool)], pos: &Pos) -> u32 {
-    let mut c = 0u32;
-    for (index, (p, is_h)) in chain.iter().enumerate() {
-        // `pos` is the next residue, so the chain tip is its covalent parent
-        // and must not be counted as a non-bonded H-H contact.
-        if index + 1 == chain.len() {
-            continue;
-        }
-        if *is_h && (p.x - pos.x).abs() + (p.y - pos.y).abs() == 1 {
-            c += 1;
-        }
-    }
-    c
-}
-
 fn build_chain<'a>(state: &'a Board<'a>, problem: &ProteinFolding) -> Vec<(Pos, bool)> {
-    let mut chain = Vec::new();
+    // This chain contains exactly one entry per residue already placed.
+    let mut chain = Vec::with_capacity(state.depth + 1);
     let mut curr = Some(state);
     while let Some(b) = curr {
         chain.push((b.pos, problem.aminoacids[b.depth] == AminoAcid::H));
@@ -162,7 +148,9 @@ fn h_lookahead1<'a>(problem: &ProteinFolding, state: &'a Board<'a>) -> u32 {
     let n = problem.aminoacids.len();
     let d = state.depth;
     let next = d + 1;
-    if next >= n { return 0; }
+    if next >= n {
+        return 0;
+    }
 
     let chain = build_chain(state, problem);
     let tip = chain.last().unwrap().0;
@@ -174,19 +162,28 @@ fn h_lookahead1<'a>(problem: &ProteinFolding, state: &'a Board<'a>) -> u32 {
         let mut min_cost = 3u32;
         for dir in dirs {
             let p = tip.clone_move(dir);
-            if chain.iter().any(|(pos, _)| *pos == p) { continue; }
-            let cost = 3u32.saturating_sub(count_contacts_chain(&chain, &p).min(3));
-            if cost < min_cost { min_cost = cost; }
+            let (occupied, contacts) = scan_chain_for_move(&chain, &p, true);
+            if occupied {
+                continue;
+            }
+            let cost = 3u32.saturating_sub(contacts.min(3));
+            if cost < min_cost {
+                min_cost = cost;
+            }
         }
         result += min_cost;
     }
 
     let mut h_count = chain.iter().filter(|(_, h)| *h).count() as u32;
-    if problem.aminoacids[next] == AminoAcid::H { h_count += 1; }
+    if problem.aminoacids[next] == AminoAcid::H {
+        h_count += 1;
+    }
 
     for i in (next + 1)..n {
         if problem.aminoacids[i] == AminoAcid::H {
-            if h_count < 3 { result += 3 - h_count; }
+            if h_count < 3 {
+                result += 3 - h_count;
+            }
             h_count += 1;
         }
     }
@@ -197,7 +194,9 @@ fn h_lookahead1<'a>(problem: &ProteinFolding, state: &'a Board<'a>) -> u32 {
 pub fn h_lookahead2<'a>(problem: &ProteinFolding, state: &'a Board<'a>) -> u32 {
     let n = problem.aminoacids.len();
     let d = state.depth;
-    if d + 1 >= n { return 0; }
+    if d + 1 >= n {
+        return 0;
+    }
 
     let chain = build_chain(state, problem);
     let tip = chain.last().unwrap().0;
@@ -210,11 +209,16 @@ pub fn h_lookahead2<'a>(problem: &ProteinFolding, state: &'a Board<'a>) -> u32 {
 
     for dir1 in dirs {
         let p1 = tip.clone_move(dir1);
-        if chain.iter().any(|(pos, _)| *pos == p1) { continue; }
+        let (occupied, contacts1) = scan_chain_for_move(&chain, &p1, step1_h);
+        if occupied {
+            continue;
+        }
 
         let cost1 = if step1_h {
-            3u32.saturating_sub(count_contacts_chain(&chain, &p1).min(3))
-        } else { 0 };
+            3u32.saturating_sub(contacts1.min(3))
+        } else {
+            0
+        };
 
         if !step2_exists {
             min_total = min_total.min(cost1);
@@ -224,12 +228,16 @@ pub fn h_lookahead2<'a>(problem: &ProteinFolding, state: &'a Board<'a>) -> u32 {
         let mut min_cost2 = 3u32;
         for dir2 in dirs {
             let p2 = p1.clone_move(dir2);
-            if chain.iter().any(|(pos, _)| *pos == p2) { continue; }
-            if p2 == p1 { continue; }
+            let (occupied, contacts2) = scan_chain_for_move(&chain, &p2, step2_h);
+            if occupied {
+                continue;
+            }
+            if p2 == p1 {
+                continue;
+            }
 
             if step2_h {
-                let c2 = count_contacts_chain(&chain, &p2);
-                min_cost2 = min_cost2.min(3u32.saturating_sub(c2.min(3)));
+                min_cost2 = min_cost2.min(3u32.saturating_sub(contacts2.min(3)));
             } else {
                 min_cost2 = 0;
             }
@@ -242,12 +250,18 @@ pub fn h_lookahead2<'a>(problem: &ProteinFolding, state: &'a Board<'a>) -> u32 {
     let mut result = if min_total == u32::MAX { 0 } else { min_total };
 
     let mut h_count = chain.iter().filter(|(_, h)| *h).count() as u32;
-    if step1_h { h_count += 1; }
-    if step2_h { h_count += 1; }
+    if step1_h {
+        h_count += 1;
+    }
+    if step2_h {
+        h_count += 1;
+    }
 
     for i in (d + 3)..n {
         if problem.aminoacids[i] == AminoAcid::H {
-            if h_count < 3 { result += 3 - h_count; }
+            if h_count < 3 {
+                result += 3 - h_count;
+            }
             h_count += 1;
         }
     }
@@ -270,36 +284,80 @@ fn min_k_steps(
     let mut best = u32::MAX;
     for dir in dirs {
         let new_pos = tip.clone_move(dir);
-        if chain.iter().any(|(p, _)| *p == new_pos) { continue; }
-        let contacts = count_contacts_chain(chain, &new_pos);
-        let cost = if is_h { 3u32.saturating_sub(contacts.min(3)) } else { 0 };
+        let (occupied, contacts) = scan_chain_for_move(chain, &new_pos, is_h);
+        if occupied {
+            continue;
+        }
+        let cost = if is_h {
+            3u32.saturating_sub(contacts.min(3))
+        } else {
+            0
+        };
         chain.push((new_pos, is_h));
         let future = min_k_steps(chain, problem, next_depth + 1, remaining - 1);
         chain.pop();
         let total = cost + future;
-        if total < best { best = total; }
+        if total < best {
+            best = total;
+        }
     }
-    if best == u32::MAX { 0 } else { best }
+    if best == u32::MAX {
+        0
+    } else {
+        best
+    }
+}
+
+// Check self-avoidance and count non-bonded H contacts in one chain walk.
+// The last chain entry is the covalent parent of `pos`.
+fn scan_chain_for_move(chain: &[(Pos, bool)], pos: &Pos, count_contacts: bool) -> (bool, u32) {
+    let mut contacts = 0;
+    let last_index = chain.len().saturating_sub(1);
+    for (index, (chain_pos, is_h)) in chain.iter().enumerate() {
+        if *chain_pos == *pos {
+            return (true, contacts);
+        }
+        if count_contacts
+            && index != last_index
+            && *is_h
+            && (chain_pos.x - pos.x).abs() + (chain_pos.y - pos.y).abs() == 1
+        {
+            contacts += 1;
+        }
+    }
+    (false, contacts)
 }
 
 // 3-step lookahead + relaxed count bound
 pub fn h_lookahead3<'a>(problem: &ProteinFolding, state: &'a Board<'a>) -> u32 {
     let n = problem.aminoacids.len();
     let d = state.depth;
-    if d + 1 >= n { return 0; }
+    if d + 1 >= n {
+        return 0;
+    }
 
-    let mut chain = build_chain(state, problem);
+    let mut chain = Vec::with_capacity(state.depth + 1 + 3);
+    let mut curr = Some(state);
+    while let Some(board) = curr {
+        chain.push((board.pos, problem.aminoacids[board.depth] == AminoAcid::H));
+        curr = board.last;
+    }
+    chain.reverse();
     let k = 3;
     let mut result = min_k_steps(&mut chain, problem, d + 1, k);
 
     let end = n.min(d + 1 + k);
     let mut h_count = chain.iter().filter(|(_, h)| *h).count() as u32;
     for i in (d + 1)..end {
-        if problem.aminoacids[i] == AminoAcid::H { h_count += 1; }
+        if problem.aminoacids[i] == AminoAcid::H {
+            h_count += 1;
+        }
     }
     for i in end..n {
         if problem.aminoacids[i] == AminoAcid::H {
-            if h_count < 3 { result += 3 - h_count; }
+            if h_count < 3 {
+                result += 3 - h_count;
+            }
             h_count += 1;
         }
     }
@@ -401,9 +459,9 @@ impl<'a> CostructSolution for ProteinFolding<'a> {
             [Some(Dir::Down), Some(Dir::Up), Some(Dir::Right), None]
         };
 
-        directions.into_iter().filter_map(move |dir| {
-            dir.filter(|dir| state.suitable(&state.pos.clone_move(*dir)))
-        })
+        directions
+            .into_iter()
+            .filter_map(move |dir| dir.filter(|dir| state.suitable(&state.pos.clone_move(*dir))))
     }
 
     fn result(&self, board: &Self::State, dir: &Self::Action) -> (Self::State, Self::Cost) {
