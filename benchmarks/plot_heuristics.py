@@ -84,7 +84,7 @@ def main():
     count = len(ORDER)
     xs = list(range(len(sequences)))
     width = 0.16
-    fig, axes = plt.subplots(3, 1, figsize=(13, 10), layout="constrained", sharex=True)
+    fig, axes = plt.subplots(3, 1, figsize=(15, 10), layout="constrained", sharex=True)
     ax_time, ax_iterations, ax_energy = axes
     for index, heuristic in enumerate(ORDER):
         offsets = [x + (index - (count - 1) / 2) * width for x in xs]
@@ -107,7 +107,7 @@ def main():
     for axis in axes:
         axis.grid(axis="y", alpha=0.2)
         axis.set_axisbelow(True)
-    ax_energy.set_xticks(xs, [f"{sequence}\n{len(sequence)} residui" for sequence in sequences])
+    ax_energy.set_xticks(xs, [f"{len(sequence)} residui" for sequence in sequences])
     fig.savefig(args.output, dpi=180)
     plt.close(fig)
 

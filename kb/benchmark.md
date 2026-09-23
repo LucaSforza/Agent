@@ -39,7 +39,10 @@ suscettibili a rumore di sistema.
 Il benchmark euristico misura sul codice finale quattro varianti già presenti
 nei commit `5842cd21`/`60443c0b` (`legacy`, `one_step`, `lookahead2`,
 `lookahead3`) e le nuove `h_lookahead3_parity` e `h_lookahead4_parity`. Tutte ricevono gli stessi input
-e vengono misurate con lo stesso harness release. Il grafico mostra le mediane
+e vengono misurate con lo stesso harness release, incluse sequenze da 9, 15, 20
+e 25 residui. Il caso più lungo rende visibile anche la qualità della soluzione:
+la variante `legacy` può essere subottima; tabella e grafico annotano l'energia
+peggiore rispetto alla migliore misurata sullo stesso input. Il grafico mostra le mediane
 di tempo e iterazioni, più l'energia ottenuta; il gruppo blu indica le varianti
 storiche e il verde le nuove. Energia più bassa significa più contatti H. Una
 euristica storica con energia maggiore della migliore per quella sequenza viene
