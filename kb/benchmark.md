@@ -59,3 +59,14 @@ Il CSV `benchmarks/heuristics.csv` conserva ogni esecuzione; i metadati di
 macchina e compilatore sono in `benchmarks/heuristics.json`. Il grafico e la
 tabella vengono salvati in `benchmarks/heuristics.png` e
 `benchmarks/heuristics.md`.
+
+[Secondo grafico](../benchmarks/heuristics.png) ·
+[tabella euristiche](../benchmarks/heuristics.md) ·
+[CSV euristiche](../benchmarks/heuristics.csv).
+
+Sui 20 residui, `h_lookahead3_parity` impiega 25,799 ms mediani contro
+28,998 ms di `h_lookahead3` (1,12 volte più veloce); entrambe danno energia
+-7. La variante a quattro passi estrae meno nodi (9.482 contro 13.224), ma
+richiede 46,004 ms: calcolo dell'euristica più costoso. Sui 25 residui,
+`legacy` impiega 21,868 ms ma trova energia -10; le euristiche ammissibili
+trovano -11. Le conclusioni valgono per queste sequenze e questa macchina.

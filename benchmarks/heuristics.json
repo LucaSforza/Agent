@@ -1,0 +1,24 @@
+{
+  "source_commit": "08bfb290dc6c599bebf299b89e266b984922db67",
+  "working_tree_dirty": false,
+  "sequences": [
+    "PHHPHPPHP",
+    "HHPHPPHHHPPPPHH",
+    "HHPHPHHHPPPPHHPHPHPP",
+    "HHPHPHHHPPPPHHPHPHPPHPHPH"
+  ],
+  "heuristics": [
+    "legacy",
+    "one_step",
+    "lookahead2",
+    "lookahead3",
+    "lookahead3_parity",
+    "lookahead4_parity"
+  ],
+  "repetitions": 7,
+  "machine": "Linux-7.2.5-200.fc44.x86_64-x86_64-with-glibc2.43",
+  "processor": "",
+  "rustc": "rustc 1.92.0 (ded5c06cf 2025-12-08)",
+  "cargo": "cargo 1.92.0 (344c4567c 2025-10-21)",
+  "measurement": "SearchResult.total_time; release build; A*; same sequence for each heuristic"
+}
