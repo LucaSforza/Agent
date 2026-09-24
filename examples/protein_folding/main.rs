@@ -16,7 +16,9 @@ use agent::{
     },
 };
 use bumpalo::Bump;
-use formulation::{AminoAcid, Dir, h_lookahead2, h_lookahead3, old_heuristic, ProteinFolding};
+use formulation::{
+    h_lookahead2, h_lookahead3, h_lookahead3_parity, old_heuristic, AminoAcid, Dir, ProteinFolding,
+};
 use rand::seq::SliceRandom;
 
 fn run_example<'a, B: FrontierBackend<'a, ProteinFolding<'a>> + std::fmt::Debug>(
@@ -148,7 +150,8 @@ fn run_all(protein: Vec<AminoAcid>) {
     }
     {
         let arena_problem = Bump::new();
-        let problem = ProteinFolding::with_heuristic(protein.clone(), &arena_problem, old_heuristic);
+        let problem =
+            ProteinFolding::with_heuristic(protein.clone(), &arena_problem, old_heuristic);
         println!("AStar (old heuristic):");
         let arena_explorer = Bump::new();
         run_example::<AStar>(&arena_explorer, &problem);
@@ -176,6 +179,14 @@ fn run_all(protein: Vec<AminoAcid>) {
     }
     {
         let arena_problem = Bump::new();
+        let problem =
+            ProteinFolding::with_heuristic(protein.clone(), &arena_problem, h_lookahead3_parity);
+        println!("AStar (3-step lookahead + parity bound):");
+        let arena_explorer = Bump::new();
+        run_example::<AStar>(&arena_explorer, &problem);
+    }
+    {
+        let arena_problem = Bump::new();
         let problem = ProteinFolding::new(protein.clone(), &arena_problem);
         println!("BestFirst:");
         let arena_explorer = Bump::new();
@@ -188,6 +199,15 @@ fn run_all(protein: Vec<AminoAcid>) {
         let arena_explorer = Bump::new();
         run_example::<DFS>(&arena_explorer, &problem);
     }
+}
+
+/// Solve with the measured fastest admissible heuristic without running the
+/// other demonstration algorithms.
+fn solve(protein: Vec<AminoAcid>) {
+    let arena_problem = Bump::new();
+    let problem = ProteinFolding::with_heuristic(protein, &arena_problem, h_lookahead3_parity);
+    let arena_explorer = Bump::new();
+    run_example::<AStar>(&arena_explorer, &problem);
 }
 
 use AminoAcid::*;
@@ -259,6 +279,10 @@ enum Commands {
     RunProtein {
         aminoacids: AminoAcidSequence,
     },
+    /// Find an optimal folding with A* and the 3-step parity heuristic.
+    Solve {
+        aminoacids: AminoAcidSequence,
+    },
     RandTest {
         #[clap(short, long)]
         len: usize,
@@ -281,6 +305,7 @@ fn main() {
 
     match args {
         Commands::RunProtein { aminoacids } => run_all(aminoacids.0),
+        Commands::Solve { aminoacids } => solve(aminoacids.0),
         Commands::RandTest { len, iters } => random_test(len, iters),
     }
 
