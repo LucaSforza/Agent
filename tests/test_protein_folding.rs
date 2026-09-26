@@ -1,4 +1,5 @@
 #[path = "../examples/protein_folding/formulation.rs"]
+#[allow(dead_code)]
 mod formulation;
 
 use agent::{

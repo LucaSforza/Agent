@@ -1,4 +1,5 @@
 #[path = "protein_folding/formulation.rs"]
+#[allow(dead_code)]
 mod formulation;
 
 use std::{env, process};
@@ -76,7 +77,7 @@ fn run(sequence: &[AminoAcid]) -> Result<(u128, usize, i32), String> {
 
 fn main() {
     let args: Vec<String> = env::args().skip(1).collect();
-    if args.len() < 1 || args.len() > 2 {
+    if args.is_empty() || args.len() > 2 {
         eprintln!("usage: cargo run --release --example protein_bench -- SEQUENCE [REPETITIONS]");
         process::exit(2);
     }

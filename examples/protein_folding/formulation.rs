@@ -33,9 +33,9 @@ impl Pos {
     }
 
     fn clone_move(&self, dir: Dir) -> Self {
-        let mut new_pos = self.clone();
+        let mut new_pos = *self;
         new_pos.move_dir(dir);
-        return new_pos;
+        new_pos
     }
 }
 
@@ -48,37 +48,6 @@ pub struct Board<'a> {
     total_contacs: u32,
 }
 
-pub struct BoardIterator<'a> {
-    head: Option<&'a Board<'a>>,
-}
-
-impl<'a> BoardIterator<'a> {
-    fn from_parts(head: Option<&'a Board<'a>>) -> Self {
-        Self { head: head }
-    }
-
-    fn new(board: &'a Board) -> Self {
-        Self { head: board.into() }
-    }
-
-    fn void_iter() -> Self {
-        Self { head: None }
-    }
-}
-
-impl<'a> Iterator for BoardIterator<'a> {
-    type Item = &'a Board<'a>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if let Some(board) = self.head.clone() {
-            self.head = board.last.clone();
-            Some(board)
-        } else {
-            None
-        }
-    }
-}
-
 impl PartialEq for Board<'_> {
     fn eq(&self, other: &Self) -> bool {
         if self.depth != other.depth {
@@ -87,17 +56,17 @@ impl PartialEq for Board<'_> {
         if self.pos != other.pos {
             return false;
         }
-        let mut curr = self.last.clone();
-        let mut curr_other = other.last.clone();
+        let mut curr = self.last;
+        let mut curr_other = other.last;
 
         while let (Some(c), Some(c_other)) = (curr, curr_other) {
             if c.pos != c_other.pos {
                 return false;
             }
-            curr = c.last.clone();
-            curr_other = c_other.last.clone();
+            curr = c.last;
+            curr_other = c_other.last;
         }
-        return true;
+        true
     }
 }
 
@@ -115,19 +84,15 @@ impl<'a> Board<'a> {
             return false;
         }
 
-        let mut last = self.last.clone();
+        let mut last = self.last;
 
         while let Some(l) = last {
             if l.pos == *pos {
                 return false;
             }
-            last = l.last.clone();
+            last = l.last;
         }
-        return true;
-    }
-
-    fn iter(self: &'a Self) -> BoardIterator<'a> {
-        BoardIterator { head: self.into() }
+        true
     }
 }
 
@@ -454,15 +419,15 @@ fn default_cost_f<'a>(problem: &ProteinFolding, state: &'a Board<'a>, new_pos: &
     let max_attacts = 3;
     let mut attacts = 0;
 
-    let mut last = state.last.clone();
+    let mut last = state.last;
 
     while let Some(l) = last {
-        if problem.aminoacids[l.depth] == AminoAcid::H {
-            if (l.pos.x - new_pos.x).abs() + (l.pos.y - new_pos.y).abs() == 1 {
-                attacts += 1;
-            }
+        if problem.aminoacids[l.depth] == AminoAcid::H
+            && (l.pos.x - new_pos.x).abs() + (l.pos.y - new_pos.y).abs() == 1
+        {
+            attacts += 1;
         }
-        last = l.last.clone()
+        last = l.last
     }
     max_attacts - attacts
 }
@@ -504,9 +469,9 @@ impl<'a> ProteinFolding<'a> {
             h_number: h_by_parity[0] + h_by_parity[1],
             h_by_parity,
             h_prefix,
-            heuristic: heuristic,
+            heuristic,
             cost_f: default_cost_f,
-            arena: arena,
+            arena,
         }
     }
 }
@@ -553,10 +518,8 @@ impl<'a> CostructSolution for ProteinFolding<'a> {
         }
 
         let cost = (self.cost_f)(self, board, &new_board.pos);
-        if self.aminoacids[board.depth + 1] == AminoAcid::H {
-            if cost != 3 {
-                new_board.total_contacs += 1;
-            }
+        if self.aminoacids[board.depth + 1] == AminoAcid::H && cost != 3 {
+            new_board.total_contacs += 1;
         }
 
         (self.arena.alloc(new_board), cost)

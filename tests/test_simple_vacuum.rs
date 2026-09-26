@@ -38,8 +38,8 @@ mod tests {
         fn from_parts(pos: Position, right_state: TailState, left_state: TailState) -> Self {
             HouseState {
                 pos,
-                right_state: right_state,
-                left_state: left_state,
+                right_state,
+                left_state,
             }
         }
     }
@@ -104,7 +104,7 @@ mod tests {
                 result += 1;
             }
 
-            return result.into();
+            result.into()
         }
     }
 
