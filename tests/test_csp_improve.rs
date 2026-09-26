@@ -61,8 +61,12 @@ mod tests {
                 return 2.0.into();
             }
             let mut cost = 0.0;
-            if state.0[0] != state.0[1] { cost += 1.0; }
-            if state.0[1] != state.0[2] { cost += 1.0; }
+            if state.0[0] != state.0[1] {
+                cost += 1.0;
+            }
+            if state.0[1] != state.0[2] {
+                cost += 1.0;
+            }
             cost.into()
         }
     }
@@ -138,8 +142,11 @@ mod tests {
 
     #[test]
     fn test_csp_local_beam() {
-        let mut resolver =
-            Resolver::new(LocalBeam::from_parts(StdRng::seed_from_u64(42), 5, Some(20)));
+        let mut resolver = Resolver::new(LocalBeam::from_parts(
+            StdRng::seed_from_u64(42),
+            5,
+            Some(20),
+        ));
         let result = resolver.resolve(&TinyCsp);
         assert!(result.h <= 0.0.into(), "h={}", result.h);
     }

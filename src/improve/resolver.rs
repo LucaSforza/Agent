@@ -23,9 +23,9 @@ where
 {
     pub fn new(state: P::State, h: P::Cost, iterations: usize) -> Self {
         Self {
-            state: state,
-            h: h,
-            iterations: iterations,
+            state,
+            h,
+            iterations,
         }
     }
 }
@@ -82,7 +82,7 @@ where
 {
     pub fn new(algo: I) -> Self {
         Self {
-            algo: algo,
+            algo,
             _problem: PhantomData,
         }
     }
@@ -96,7 +96,7 @@ where
     pub fn resolve(&mut self, problem: &P) -> ResolverResult<P> {
         let start = Instant::now();
         let inner = self.algo.attempt(problem);
-        return ResolverResult::from_inner(start, inner);
+        ResolverResult::from_inner(start, inner)
     }
 
     pub fn resolve_restart(&mut self, problem: &P, max_restarts: usize) -> ResolverResult<P> {
@@ -118,6 +118,6 @@ where
             }
             result.iterations += new_result.iterations;
         }
-        return ResolverResult::from_inner(start, result);
+        ResolverResult::from_inner(start, result)
     }
 }

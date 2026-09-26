@@ -1,9 +1,7 @@
 #[cfg(test)]
 mod tests {
     use agent::problem::{CostructSolution, Problem, SuitableState, Utility};
-    use agent::statexplorer::resolver::{
-        AStarExplorer, BFSExplorer, DFSExplorer, MinCostExplorer,
-    };
+    use agent::statexplorer::resolver::{AStarExplorer, BFSExplorer, DFSExplorer, MinCostExplorer};
     use bumpalo::Bump;
 
     // Problem: already at goal (empty actions).
@@ -39,7 +37,7 @@ mod tests {
             std::iter::empty()
         }
 
-        fn result(&self, state: &Self::State, _: &Self::Action) -> (Self::State, Self::Cost) {
+        fn result(&self, _: &Self::State, _: &Self::Action) -> (Self::State, Self::Cost) {
             (EmptyState, 0)
         }
     }
@@ -220,18 +218,12 @@ mod tests {
     // Path 2: 0 -> 2 -> 3 -> 4 (cost 1 per step = total 3)
     // A*/MinCost should find path 2 (cheaper total cost).
 
-    #[derive(Clone, PartialEq, Eq, Hash)]
+    #[derive(Clone, PartialEq, Eq, Hash, Default)]
     struct Pos(usize);
 
     impl std::fmt::Debug for Pos {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             write!(f, "Pos({})", self.0)
-        }
-    }
-
-    impl Default for Pos {
-        fn default() -> Self {
-            Self(0)
         }
     }
 
@@ -335,18 +327,12 @@ mod tests {
     }
 
     // Cyclic graph: edge cases for explored set.
-    #[derive(Clone, PartialEq, Eq, Hash)]
+    #[derive(Clone, PartialEq, Eq, Hash, Default)]
     struct Cyclic(i32);
 
     impl std::fmt::Debug for Cyclic {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             write!(f, "C({})", self.0)
-        }
-    }
-
-    impl Default for Cyclic {
-        fn default() -> Self {
-            Self(0)
         }
     }
 
@@ -399,7 +385,10 @@ mod tests {
         let arena = Bump::new();
         let mut explorer = BFSExplorer::new(&CyclicProblem, &arena);
         let result = explorer.search(Cyclic(0));
-        assert!(result.actions.is_some(), "BFS should find path through cycle");
+        assert!(
+            result.actions.is_some(),
+            "BFS should find path through cycle"
+        );
         eprintln!("Cyclic BFS: actions={:?}", result.actions.unwrap());
     }
 
@@ -408,7 +397,10 @@ mod tests {
         let arena = Bump::new();
         let mut explorer = DFSExplorer::new(&CyclicProblem, &arena);
         let result = explorer.search(Cyclic(0));
-        assert!(result.actions.is_some(), "DFS should find path through cycle");
+        assert!(
+            result.actions.is_some(),
+            "DFS should find path through cycle"
+        );
         eprintln!("Cyclic DFS: iter={}", result.n_iter);
     }
 }

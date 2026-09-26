@@ -4,9 +4,7 @@ mod tests {
         HillClimbing, LocalBeam, SimulatedAnnealing, SteepestDescend,
     };
     use agent::improve::resolver::Resolver;
-    use agent::problem::{
-        CostructSolution, Problem, StatePerturbation, SuitableState, Utility,
-    };
+    use agent::problem::{CostructSolution, Problem, StatePerturbation, SuitableState, Utility};
     use rand::rngs::StdRng;
     use rand::SeedableRng;
 
@@ -91,8 +89,11 @@ mod tests {
 
     #[test]
     fn test_trivial_optimal_local_beam() {
-        let mut resolver =
-            Resolver::new(LocalBeam::from_parts(StdRng::seed_from_u64(42), 5, Some(10)));
+        let mut resolver = Resolver::new(LocalBeam::from_parts(
+            StdRng::seed_from_u64(42),
+            5,
+            Some(10),
+        ));
         let result = resolver.resolve(&TrivialOptimal);
         assert_eq!(result.h, 0);
     }
@@ -101,18 +102,12 @@ mod tests {
     #[derive(Clone)]
     struct FlatLandscape;
 
-    #[derive(Clone, PartialEq, Eq, Hash)]
+    #[derive(Clone, PartialEq, Eq, Hash, Default)]
     struct FlatState(i32);
 
     impl std::fmt::Debug for FlatState {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             write!(f, "Flat({})", self.0)
-        }
-    }
-
-    impl Default for FlatState {
-        fn default() -> Self {
-            Self(0)
         }
     }
 
@@ -173,8 +168,10 @@ mod tests {
 
     #[test]
     fn test_flat_landscape_hill_climbing_terminates() {
-        let mut resolver =
-            Resolver::new(HillClimbing::with_max_lateral(StdRng::seed_from_u64(42), 10));
+        let mut resolver = Resolver::new(HillClimbing::with_max_lateral(
+            StdRng::seed_from_u64(42),
+            10,
+        ));
         let result = resolver.resolve(&FlatLandscape);
         eprintln!(
             "Flat HillClimbing: h={} iter={}",
@@ -223,9 +220,12 @@ mod tests {
         }
 
         fn result(&self, state: &Self::State, _: &Self::Action) -> (Self::State, Self::Cost) {
-            (SingleState {
-                count: state.count + 1,
-            }, 1)
+            (
+                SingleState {
+                    count: state.count + 1,
+                },
+                1,
+            )
         }
     }
 
@@ -278,8 +278,11 @@ mod tests {
     // Local beam edge: k=1 (degrades to hill-climbing)
     #[test]
     fn test_local_beam_k1_terminates() {
-        let mut resolver =
-            Resolver::new(LocalBeam::from_parts(StdRng::seed_from_u64(42), 1, Some(20)));
+        let mut resolver = Resolver::new(LocalBeam::from_parts(
+            StdRng::seed_from_u64(42),
+            1,
+            Some(20),
+        ));
         let result = resolver.resolve(&SingleNeighbor);
         eprintln!("LocalBeam(k=1): h={}, iter={}", result.h, result.iterations);
     }

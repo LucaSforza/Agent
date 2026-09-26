@@ -9,18 +9,12 @@ mod tests {
     // Tiny problem: count from 0 to target.
     // Small state space (target=4, depth up to 4), fast search.
 
-    #[derive(Clone, PartialEq, Eq, Hash)]
+    #[derive(Clone, PartialEq, Eq, Hash, Default)]
     struct Counter(i32);
 
     impl std::fmt::Debug for Counter {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             write!(f, "{}", self.0)
-        }
-    }
-
-    impl Default for Counter {
-        fn default() -> Self {
-            Self(0)
         }
     }
 
@@ -71,7 +65,10 @@ mod tests {
         let actions = result.actions.unwrap();
         assert_eq!(actions.len() as i32, 4);
         assert!(result.state.is_some());
-        eprintln!("CountTo BFS: iter={} t={:?}", result.n_iter, result.total_time);
+        eprintln!(
+            "CountTo BFS: iter={} t={:?}",
+            result.n_iter, result.total_time
+        );
     }
 
     #[test]

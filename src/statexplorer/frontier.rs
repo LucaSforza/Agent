@@ -13,6 +13,8 @@ pub trait FrontierBackend<'a, P>: Default
 where
     P: Utility,
 {
+    const REOPENS_IMPROVED_STATES: bool = false;
+
     fn enqueue(&mut self, item: &'a Node<'a, P>);
     fn dequeue(&mut self) -> Option<&'a Node<'a, P>>;
     fn reset(&mut self);
@@ -41,18 +43,18 @@ where
     }
 
     pub fn enqueue_or_replace(&mut self, item: &'a Node<'a, P>) -> bool {
-        let mut to_remove: Option<&P::State> = None;
+        let mut replaced_old = false;
         if let Some(old_node) = self.get_node.get(item.get_state()) {
             if old_node.get_g_cost() > item.get_g_cost() {
-                to_remove = old_node.get_state().into();
                 old_node.mark_dead();
+                replaced_old = true;
             } else {
                 return false;
             }
         }
 
-        if let Some(to_remove) = to_remove {
-            self.get_node.remove(&to_remove.clone());
+        if replaced_old {
+            self.get_node.remove(item.get_state());
         }
 
         let state = item.get_state().clone();
@@ -64,11 +66,10 @@ where
 
     pub fn dequeue(&mut self) -> Option<&'a Node<'a, P>> {
         let mut result = self.collection.dequeue();
-        while result.clone().map_or(false, |n| n.is_dead()) {
+        while result.is_some_and(|n| n.is_dead()) {
             result = self.collection.dequeue()
         }
-        if result.is_some() {
-            let node = result.clone().unwrap();
+        if let Some(node) = result {
             self.get_node.remove(node.get_state());
         }
         result
@@ -81,6 +82,16 @@ where
 
     pub fn size(&self) -> usize {
         self.get_node.len()
+    }
+}
+
+impl<'a, P, Backend> Default for Frontier<'a, P, Backend>
+where
+    P: Utility<State: Eq + Hash + Clone, Action: Clone>,
+    Backend: FrontierBackend<'a, P>,
+{
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -144,6 +155,8 @@ pub trait NodeCost<P>
 where
     P: Utility,
 {
+    const REOPENS_IMPROVED_STATES: bool = false;
+
     fn cost(node: &Node<P>) -> P::Cost;
 
     /// Secondary ordering for nodes with the same primary cost.
@@ -161,6 +174,8 @@ impl<P> NodeCost<P> for AStarPolicy
 where
     P: Utility<Action: Clone>,
 {
+    const REOPENS_IMPROVED_STATES: bool = true;
+
     fn cost(node: &Node<P>) -> P::Cost {
         node.get_f_cost()
     }
@@ -187,12 +202,14 @@ impl<P> NodeCost<P> for MinCostPolicy
 where
     P: Utility<Action: Clone>,
 {
+    const REOPENS_IMPROVED_STATES: bool = true;
+
     fn cost(node: &Node<P>) -> P::Cost {
         node.get_g_cost()
     }
 }
 
-pub struct NodeAndCost<'a, P>(&'a Node<'a, P>, Reverse<(P::Cost, P::Cost)>)
+pub struct NodeAndCost<'a, P>(&'a Node<'a, P>, Reverse<(P::Cost, P::Cost, u64)>)
 where
     P: Utility;
 
@@ -201,7 +218,11 @@ where
     P: Utility,
 {
     pub fn new(node: &'a Node<P>, cost: P::Cost, tie_break: P::Cost) -> Self {
-        Self(node, Reverse((cost, tie_break)))
+        Self::with_sequence(node, cost, tie_break, 0)
+    }
+
+    fn with_sequence(node: &'a Node<P>, cost: P::Cost, tie_break: P::Cost, sequence: u64) -> Self {
+        Self(node, Reverse((cost, tie_break, sequence)))
     }
 }
 
@@ -249,6 +270,7 @@ where
     Policy: NodeCost<P>,
 {
     collection: BinaryHeap<NodeAndCost<'a, P>>,
+    next_sequence: u64,
     policy: PhantomData<Policy>,
 }
 
@@ -260,6 +282,7 @@ where
     fn default() -> Self {
         Self {
             collection: Default::default(),
+            next_sequence: 0,
             policy: PhantomData,
         }
     }
@@ -270,10 +293,15 @@ where
     P: Utility,
     Policy: NodeCost<P>,
 {
+    const REOPENS_IMPROVED_STATES: bool = Policy::REOPENS_IMPROVED_STATES;
+
     fn enqueue(&mut self, item: &'a Node<'a, P>) {
         let cost = Policy::cost(item);
         let tie_break = Policy::tie_break(item);
-        self.collection.push(NodeAndCost::new(item, cost, tie_break));
+        let sequence = self.next_sequence;
+        self.next_sequence = self.next_sequence.wrapping_add(1);
+        self.collection
+            .push(NodeAndCost::with_sequence(item, cost, tie_break, sequence));
     }
 
     fn dequeue(&mut self) -> Option<&'a Node<'a, P>> {
@@ -281,7 +309,8 @@ where
     }
 
     fn reset(&mut self) {
-        self.collection.clear()
+        self.collection.clear();
+        self.next_sequence = 0;
     }
 
     fn size(&self) -> usize {

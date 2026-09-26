@@ -29,7 +29,7 @@ struct Csp {
 impl Csp {
     fn new(n: usize) -> Self {
         Self {
-            n: n,
+            n,
             // dom: Domain::from_parts(1, 5),
         }
     }
@@ -97,10 +97,7 @@ struct ChangeVariabile {
 
 impl ChangeVariabile {
     fn from_parts(i: usize, new_val: i32) -> Self {
-        Self {
-            i: i,
-            new_val: new_val,
-        }
+        Self { i, new_val }
     }
 }
 
@@ -116,9 +113,9 @@ impl StatePerturbation for Csp {
     fn perturbations(&self, state: &Self::State) -> impl Iterator<Item = Self::Perturbation> {
         let mut actions = Vec::with_capacity(self.n * 5);
 
-        for i in 0..self.n {
+        for (i, current_value) in state.iter().take(self.n).enumerate() {
             for j in 1..=5 {
-                if j != state[i] {
+                if j != *current_value {
                     actions.push(ChangeVariabile::from_parts(i, j));
                 }
             }

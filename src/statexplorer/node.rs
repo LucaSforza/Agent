@@ -53,11 +53,11 @@ where
         }
         let h = problem.heuristic(&state);
         Self {
-            state: state,
-            parent: parent,
-            action: action,
-            total_cost: total_cost,
-            depth: depth,
+            state,
+            parent,
+            action,
+            total_cost,
+            depth,
             heuristic: h,
             dead: false.into(),
         }
@@ -75,7 +75,7 @@ where
                 if let Some(action) = &node.action {
                     result.push(action.clone());
                 }
-                current_node = node.parent.clone();
+                current_node = node.parent;
             }
         }
         result.reverse();
@@ -83,15 +83,15 @@ where
     }
 
     pub fn get_g_cost(&self) -> P::Cost {
-        return self.total_cost;
+        self.total_cost
     }
 
     pub fn get_h_cost(&self) -> P::Cost {
-        return self.heuristic;
+        self.heuristic
     }
 
     pub fn get_f_cost(&self) -> P::Cost {
-        return self.total_cost + self.heuristic;
+        self.total_cost + self.heuristic
     }
 
     pub fn get_state(&self) -> &P::State {

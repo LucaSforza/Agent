@@ -27,7 +27,7 @@ mod tests {
 
     impl Pos {
         fn new(x: usize, y: usize) -> Self {
-            Self { x: x, y: y }
+            Self { x, y }
         }
     }
 
@@ -40,14 +40,14 @@ mod tests {
     impl HouseState {
         fn with_dirty(x: usize, y: usize, where_dirty: Vec<Pos>) -> Self {
             Self {
-                pos: Pos { x: x, y: y },
+                pos: Pos { x, y },
                 where_dirty: where_dirty.into(),
             }
         }
 
         fn new_position(&self, x: usize, y: usize) -> Self {
             Self {
-                pos: Pos { x: x, y: y },
+                pos: Pos { x, y },
                 where_dirty: self.where_dirty.clone(),
             }
         }
@@ -67,7 +67,7 @@ mod tests {
                     break;
                 }
             }
-            return result;
+            result
         }
     }
 
@@ -79,10 +79,7 @@ mod tests {
 
     impl CleanProblem {
         fn new(rows: usize, cols: usize) -> Self {
-            Self {
-                rows: rows,
-                cols: cols,
-            }
+            Self { rows, cols }
         }
     }
 
@@ -336,25 +333,25 @@ mod tests {
             Action::Suck,
             Action::Right,
             Action::Suck,
-            Action::Up,
+            Action::Left,
             Action::Up,
             Action::Suck,
             Action::Left,
-            Action::Suck,
-            Action::Down,
-            Action::Suck,
-            Action::Up,
-            Action::Up,
-            Action::Suck,
-            Action::Left,
-            Action::Suck,
-            Action::Up,
-            Action::Suck,
-            Action::Down,
             Action::Left,
             Action::Suck,
             Action::Left,
             Action::Suck,
+            Action::Up,
+            Action::Suck,
+            Action::Up,
+            Action::Suck,
+            Action::Right,
+            Action::Suck,
+            Action::Right,
+            Action::Suck,
+            Action::Up,
+            Action::Suck,
+            Action::Right,
             Action::Down,
             Action::Suck,
             Action::Down,

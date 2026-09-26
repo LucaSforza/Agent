@@ -26,11 +26,11 @@ struct NextQueenIterator {
 
 impl NextQueenIterator {
     fn new(n: usize) -> Self {
-        Self { i: 0, n: n }
+        Self { i: 0, n }
     }
 
     fn void_iter(n: usize) -> Self {
-        Self { i: n, n: n }
+        Self { i: n, n }
     }
 }
 
@@ -43,7 +43,7 @@ impl Iterator for NextQueenIterator {
             self.i += 1;
             return Some(to_return);
         }
-        return None;
+        None
     }
 }
 
@@ -54,14 +54,11 @@ struct MoveQueen {
 
 impl MoveQueen {
     fn new(col: usize, new_row: usize) -> Self {
-        Self {
-            col: col,
-            new_row: new_row,
-        }
+        Self { col, new_row }
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash, Default)]
 struct DeploymentQueens {
     pos: Vec<usize>,
 }
@@ -86,7 +83,7 @@ impl fmt::Debug for DeploymentQueens {
 
 impl DeploymentQueens {
     fn new(pos: Vec<usize>) -> Self {
-        Self { pos: pos }
+        Self { pos }
     }
 
     fn potential_conficts(&self, next_row: NextQueenPos) -> usize {
@@ -115,12 +112,6 @@ impl DeploymentQueens {
     }
 }
 
-impl Default for DeploymentQueens {
-    fn default() -> Self {
-        Self { pos: Vec::new() }
-    }
-}
-
 #[derive(Clone)]
 struct NQueen {
     n: usize,
@@ -128,7 +119,7 @@ struct NQueen {
 
 impl NQueen {
     fn new(n: usize) -> Self {
-        Self { n: n }
+        Self { n }
     }
 }
 
@@ -167,7 +158,7 @@ impl Utility for NQueen {
             }
         }
 
-        return result.into();
+        result.into()
     }
 }
 
@@ -185,7 +176,7 @@ struct MoveQueenIterator {
 
 impl MoveQueenIterator {
     fn new(n: usize) -> Self {
-        Self { i: 0, j: 0, n: n }
+        Self { i: 0, j: 0, n }
     }
 }
 
@@ -197,9 +188,9 @@ impl Iterator for MoveQueenIterator {
             let to_move = MoveQueen::new(self.j, self.i);
             self.i += 1;
 
-            return to_move.into();
+            to_move.into()
         } else if self.j >= self.n {
-            return None;
+            None
         } else {
             let to_move = MoveQueen::new(self.j, self.i);
             self.j += 1;
@@ -209,7 +200,7 @@ impl Iterator for MoveQueenIterator {
             } else {
                 self.i = 0;
             }
-            return to_move.into();
+            to_move.into()
         }
     }
 }

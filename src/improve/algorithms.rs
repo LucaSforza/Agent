@@ -38,16 +38,13 @@ pub struct SteepestDescend<R: Rng> {
 impl<R: Rng> SteepestDescend<R> {
     pub fn new(rng: R) -> Self {
         Self {
-            rng: rng,
+            rng,
             verb: Verbosity::Low,
         }
     }
 
     pub fn with_verbosity(rng: R, verb: Verbosity) -> Self {
-        Self {
-            verb: verb,
-            rng: rng,
-        }
+        Self { verb, rng }
     }
 }
 
@@ -97,14 +94,14 @@ pub struct HillClimbing<R: Rng> {
 impl<R: Rng> HillClimbing<R> {
     pub fn new(rng: R) -> Self {
         Self {
-            rng: rng,
+            rng,
             max_lateral: None,
         }
     }
 
     pub fn with_max_lateral(rng: R, max_lateral: usize) -> Self {
         Self {
-            rng: rng,
+            rng,
             max_lateral: max_lateral.into(),
         }
     }
@@ -121,11 +118,11 @@ where
         curr_h: P::Cost,
         max_lateral: Option<usize>,
     ) -> Option<(P::State, P::Cost)> {
-        let mut actions = problem.perturbations(state);
-        while let Some(a) = actions.next() {
+        let actions = problem.perturbations(state);
+        for a in actions {
             let next_state = problem.perturb(state, &a);
             let next_h = problem.heuristic(&next_state);
-            if max_lateral.map_or(true, |x| x > *lateral) && next_h == curr_h {
+            if max_lateral.is_none_or(|x| x > *lateral) && next_h == curr_h {
                 *lateral += 1;
                 return (next_state, next_h).into();
             }
@@ -175,7 +172,7 @@ impl<R: Rng> SimulatedAnnealing<R> {
 
     pub fn new(rng: R) -> Self {
         Self {
-            rng: rng,
+            rng,
             cooling: Self::default_cooling,
             precision: 10e-6,
         }
@@ -183,8 +180,8 @@ impl<R: Rng> SimulatedAnnealing<R> {
 
     pub fn with_cooling(rng: R, cooling: fn(usize) -> f64) -> Self {
         Self {
-            rng: rng,
-            cooling: cooling,
+            rng,
+            cooling,
             precision: 10e-6,
         }
     }
@@ -253,7 +250,7 @@ where
     P: CostructSolution,
 {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.0.partial_cmp(&other.0)
+        Some(self.cmp(other))
     }
 }
 
@@ -273,11 +270,7 @@ pub struct LocalBeam<R: Rng> {
 
 impl<R: Rng> LocalBeam<R> {
     pub fn from_parts(rng: R, k: usize, max_iter: Option<usize>) -> Self {
-        Self {
-            rng: rng,
-            k: k,
-            max_iter: max_iter,
-        }
+        Self { rng, k, max_iter }
     }
 }
 
@@ -308,7 +301,7 @@ where
                 }
             }
 
-            if self.max_iter.map_or(false, |max| max < iter) {
+            if self.max_iter.is_some_and(|max| max < iter) {
                 let node = succ
                     .pop()
                     .unwrap_or(Node(Default::default(), problem.init_state()));
@@ -324,7 +317,7 @@ where
                     break;
                 }
             }
-            if current_pop.len() == 0 {
+            if current_pop.is_empty() {
                 // TODO: make sure that AttemptResult returns a failure
                 return AttemptResult::new(problem.init_state(), Default::default(), iter);
             }
@@ -342,10 +335,10 @@ pub struct GeneticAlgorithm<R: Rng> {
 impl<R: Rng> GeneticAlgorithm<R> {
     pub fn from_parts(rng: R, k: usize, max_iter: Option<usize>, pmut: f64) -> Self {
         Self {
-            rng: rng,
-            k: k,
-            max_iter: max_iter,
-            pmut: pmut,
+            rng,
+            k,
+            max_iter,
+            pmut,
         }
     }
 }
@@ -378,12 +371,12 @@ where
                 let parent1 = &current_pop[distr.sample(&mut self.rng)];
                 let parent2 = &current_pop[distr.sample(&mut self.rng)];
 
-                let mut child = problem.crossover(&mut self.rng, parent1, parent2);
+                let child = problem.crossover(&mut self.rng, parent1, parent2);
 
                 let r: f64 = self.rng.random();
 
                 if r <= self.pmut {
-                    problem.mutate_gene(&mut self.rng, &mut child);
+                    problem.mutate_gene(&mut self.rng, &child);
                 }
 
                 let child_h = problem.heuristic(&child);
@@ -401,10 +394,10 @@ where
             distr = WeightedIndex::new(&current_weights).unwrap();
 
             // Stop if max iterations reached
-            if self.max_iter.map_or(false, |max| max <= iter) {
+            if self.max_iter.is_some_and(|max| max <= iter) {
                 let best_s = current_pop
                     .into_iter()
-                    .zip(current_weights.into_iter())
+                    .zip(current_weights)
                     .min_by_key(|(_, h)| OrderedFloat(*h))
                     .map(|(x, _)| x)
                     .unwrap();

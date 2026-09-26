@@ -1,3 +1,4 @@
+#[allow(dead_code)]
 mod formulation;
 
 use std::{
@@ -8,10 +9,7 @@ use std::{
 use agent::{
     problem::InitState,
     statexplorer::{
-        frontier::{
-            AStarBackend, BestFirstBackend, DequeBackend, FrontierBackend, MinCostBackend,
-            StackBackend,
-        },
+        frontier::{AStarBackend, BestFirstBackend, FrontierBackend, MinCostBackend, StackBackend},
         resolver::TreeExplorer,
     },
 };
@@ -47,10 +45,9 @@ fn run_example_get_time<'a, B: FrontierBackend<'a, ProteinFolding<'a>>>(
 type MinCost<'a> = MinCostBackend<'a, ProteinFolding<'a>>;
 type AStar<'a> = AStarBackend<'a, ProteinFolding<'a>>;
 type BestFirst<'a> = BestFirstBackend<'a, ProteinFolding<'a>>;
-type BFS<'a> = DequeBackend<'a, ProteinFolding<'a>>;
-type DFS<'a> = StackBackend<'a, ProteinFolding<'a>>;
+type Dfs<'a> = StackBackend<'a, ProteinFolding<'a>>;
 
-fn print_solution(protein: &Vec<AminoAcid>, solution: Vec<Dir>) -> i32 {
+fn print_solution(protein: &[AminoAcid], solution: Vec<Dir>) -> i32 {
     // Genera le posizioni originali degli aminoacidi
     let mut positions = vec![(0, 0)];
     let mut current_pos = (0, 0);
@@ -197,7 +194,7 @@ fn run_all(protein: Vec<AminoAcid>) {
         let problem = ProteinFolding::new(protein.clone(), &arena_problem);
         println!("DFS:");
         let arena_explorer = Bump::new();
-        run_example::<DFS>(&arena_explorer, &problem);
+        run_example::<Dfs>(&arena_explorer, &problem);
     }
 }
 

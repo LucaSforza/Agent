@@ -42,9 +42,7 @@ mod tests {
         type Cost = ordered_float::OrderedFloat<f64>;
 
         fn executable_actions(&self, state: &Self::State) -> impl Iterator<Item = Self::Action> {
-            (0..state.0.len())
-                .filter(|&i| !state.0[i])
-                .map(SetBit)
+            (0..state.0.len()).filter(|&i| !state.0[i]).map(SetBit)
         }
 
         fn result(&self, state: &Self::State, action: &Self::Action) -> (Self::State, Self::Cost) {
@@ -127,8 +125,11 @@ mod tests {
 
     #[test]
     fn test_local_beam() {
-        let mut resolver =
-            Resolver::new(LocalBeam::from_parts(StdRng::seed_from_u64(42), 5, Some(20)));
+        let mut resolver = Resolver::new(LocalBeam::from_parts(
+            StdRng::seed_from_u64(42),
+            5,
+            Some(20),
+        ));
         let result = resolver.resolve(&FlipProblem);
         assert!(result.iterations > 0);
     }
@@ -141,7 +142,7 @@ mod tests {
             Some(30),
             0.3,
         ));
-        let result = resolver.resolve(&FlipProblem);
+        resolver.resolve(&FlipProblem);
         // GA may solve immediately if random state hits optimal.
         // Just check no panic.
     }
